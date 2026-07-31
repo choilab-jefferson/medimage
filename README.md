@@ -14,7 +14,7 @@ medical imaging.
 | [2. Masks and filters](Chapter2_Masks_and_Filters.ipynb) | Histograms, selecting pixels, denoising, morphology, edges | Fat and muscle are picked out by their HU range — after denoising | ✅ ready |
 | [3. Measurement](Chapter3_Measurement.ipynb) | Labeling, object selection, area and volume, mean HU, validating with Dice | Areas and mean HU *are* the body composition numbers | ✅ ready |
 | [4. Image comparison](Chapter4_Image_Comparison.ipynb) | Resampling, transformations, similarity metrics, normalisation | Two patients are different sizes, so raw numbers cannot be compared | ✅ ready |
-| 5. Body composition from CT | Muscle, subcutaneous and visceral fat at the L3 vertebra | The destination | in progress |
+| [5. Body composition from CT](Chapter5_Body_Composition_CT.ipynb) | Finding L3, verifying a pretrained model, muscle / SAT / VAT, the muscle index | The destination | ✅ ready |
 | [6. Fat quantification with MR](Chapter6_MR_Fat_Quantification.ipynb) | Dixon in/opposed-phase, fat-fraction maps, liver steatosis | The other modality that can measure fat, and why CT is still the default | ✅ ready |
 | 7. PET/CT | SUV, PET/CT fusion, cardiac FDG uptake, delta radiomics | Function as well as anatomy — and a published clinical application | in progress |
 | 8. Reproducing published results | `qr` end to end on a public cohort, compared against the paper | Whether a pipeline reproduces is the question that matters | in progress |
@@ -40,6 +40,7 @@ used for testing.
 | 2. Masks and filters | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter2_Masks_and_Filters.ipynb) |
 | 3. Measurement | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter3_Measurement.ipynb) |
 | 4. Image comparison | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter4_Image_Comparison.ipynb) |
+| 5. Body composition from CT | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter5_Body_Composition_CT.ipynb) |
 | 6. Fat quantification with MR | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter6_MR_Fat_Quantification.ipynb) |
 
 ```bash
@@ -132,9 +133,12 @@ The notebook finds `TotalSegmentator` on `$PATH` or in `.venv-ts/bin/`. No GPU i
 
 ## What Chapters 5–8 do
 
-**Chapter 5 — body composition from CT.** Locate L3, segment skeletal muscle, subcutaneous fat and
-visceral fat, convert to areas and indices, extend to radiomics features, and scale the workflow to
-a cohort.
+**Chapter 5 — body composition from CT.** Finds the L3 vertebra with TotalSegmentator and then
+checks the answer, because three different run settings gave three different L3 levels on the same
+scan (Dice 0.66 between two of them). Builds the abdominal cavity boundary from the organ labels,
+which is what separates visceral from subcutaneous fat, and measures muscle 161 cm2, SAT 193 cm2 and
+VAT 84 cm2 at mid-L3. Closes on the muscle index, and on the fact that no scan contains the patient
+height the index needs.
 
 **Chapter 6 — fat quantification with MR.** MRI separates fat from water physically rather than by
 brightness, using the slightly different precession rates of their hydrogen. The chapter derives
