@@ -17,7 +17,7 @@ medical imaging.
 | [5. Body composition from CT](Chapter5_Body_Composition_CT.ipynb) | Finding L3, verifying a pretrained model, muscle / SAT / VAT, the muscle index | The destination | ✅ ready |
 | [6. Fat quantification with MR](Chapter6_MR_Fat_Quantification.ipynb) | Dixon in/opposed-phase, fat-fraction maps, liver steatosis | The other modality that can measure fat, and why CT is still the default | ✅ ready |
 | [7. PET/CT](Chapter7_PET_CT.ipynb) | SUV, PET/CT fusion, cardiac FDG uptake, delta between timepoints | Function as well as anatomy — and a published clinical application | ✅ ready |
-| 8. Reproducing published results | `qr` end to end on a public cohort, compared against the paper | Whether a pipeline reproduces is the question that matters | in progress |
+| [8. Reproducing published results](Chapter8_Reproducibility.ipynb) | `qr` end to end on Lung1, compared against the paper | Whether a pipeline reproduces is the question that matters | ✅ ready |
 
 ### What the course is actually about
 
@@ -42,6 +42,7 @@ used for testing.
 | 4. Image comparison | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter4_Image_Comparison.ipynb) |
 | 5. Body composition from CT | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter5_Body_Composition_CT.ipynb) |
 | 7. PET/CT | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter7_PET_CT.ipynb) |
+| 8. Reproducing published results | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter8_Reproducibility.ipynb) |
 | 6. Fat quantification with MR | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter6_MR_Fat_Quantification.ipynb) |
 
 ```bash
@@ -157,9 +158,11 @@ is what validates the conversion before anything is interpreted. Framed by Choi 
 JCO Clinical Cancer Informatics 2024 ([PMID 38452302](https://pubmed.ncbi.nlm.nih.gov/38452302/)).
 
 **Chapter 8 — reproducing published results.** Runs the full `qr` pipeline on a subset of the Lung1
-cohort and compares the resulting Cox c-index against both the full-cohort reproduction and the
-number published by Aerts et al. (2014). A small subset scores lower, and the chapter explains why
-rather than tuning until it agrees.
+cohort — download, contour conversion, feature extraction, clinical merge, cross-validated Cox — and
+compares the result against the full-cohort reproduction (0.580) and the published figure from Aerts
+et al. (0.650). At 59 patients the measured c-index is **0.482**, indistinguishable from chance, and
+the chapter says so instead of tuning until it agrees. It separates two questions that are easy to
+confuse: whether an *effect* reproduces, and whether a *number* does.
 
 ## Honest limitations
 
