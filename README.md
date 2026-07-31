@@ -16,7 +16,7 @@ medical imaging.
 | [4. Image comparison](Chapter4_Image_Comparison.ipynb) | Resampling, transformations, similarity metrics, normalisation | Two patients are different sizes, so raw numbers cannot be compared | ✅ ready |
 | [5. Body composition from CT](Chapter5_Body_Composition_CT.ipynb) | Finding L3, verifying a pretrained model, muscle / SAT / VAT, the muscle index | The destination | ✅ ready |
 | [6. Fat quantification with MR](Chapter6_MR_Fat_Quantification.ipynb) | Dixon in/opposed-phase, fat-fraction maps, liver steatosis | The other modality that can measure fat, and why CT is still the default | ✅ ready |
-| 7. PET/CT | SUV, PET/CT fusion, cardiac FDG uptake, delta radiomics | Function as well as anatomy — and a published clinical application | in progress |
+| [7. PET/CT](Chapter7_PET_CT.ipynb) | SUV, PET/CT fusion, cardiac FDG uptake, delta between timepoints | Function as well as anatomy — and a published clinical application | ✅ ready |
 | 8. Reproducing published results | `qr` end to end on a public cohort, compared against the paper | Whether a pipeline reproduces is the question that matters | in progress |
 
 ### What the course is actually about
@@ -41,6 +41,7 @@ used for testing.
 | 3. Measurement | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter3_Measurement.ipynb) |
 | 4. Image comparison | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter4_Image_Comparison.ipynb) |
 | 5. Body composition from CT | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter5_Body_Composition_CT.ipynb) |
+| 7. PET/CT | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter7_PET_CT.ipynb) |
 | 6. Fat quantification with MR | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter6_MR_Fat_Quantification.ipynb) |
 
 ```bash
@@ -148,11 +149,12 @@ the method where it genuinely works — liver steatosis — measuring 2.9%, 3.7%
 four subjects against the 5% clinical threshold, with the spleen as a noise-floor control.
 
 **Chapter 7 — PET/CT.** PET measures function rather than anatomy, and SUV is its calibrated unit —
-the PET analogue of the Hounsfield unit. The chapter covers SUV conversion, PET/CT fusion, uptake in
-the heart, and delta features between treatment timepoints. It is framed by Choi et al.,
+the PET analogue of the Hounsfield unit. The chapter converts an ACRIN 6668 PET series to SUV with
+the QIBA-standard converter in qradiomics, resamples it onto the CT grid, and measures uptake in the
+heart against the liver as reference. The liver reads SUV 2.27, right on the expected value, which
+is what validates the conversion before anything is interpreted. Framed by Choi et al.,
 *Novel Functional Radiomics for Prediction of Cardiac PET Avidity in Lung Cancer Radiotherapy*,
-JCO Clinical Cancer Informatics 2024 ([PMID 38452302](https://pubmed.ncbi.nlm.nih.gov/38452302/)),
-which classified cardiac FDG uptake from pretreatment PET/CT.
+JCO Clinical Cancer Informatics 2024 ([PMID 38452302](https://pubmed.ncbi.nlm.nih.gov/38452302/)).
 
 **Chapter 8 — reproducing published results.** Runs the full `qr` pipeline on a subset of the Lung1
 cohort and compares the resulting Cox c-index against both the full-cohort reproduction and the

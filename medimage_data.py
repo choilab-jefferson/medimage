@@ -42,6 +42,11 @@ CITATIONS = {
         "Pancreas-CT. The Cancer Imaging Archive. "
         "https://doi.org/10.7937/K9/TCIA.2016.tNB1kqBU  (CC BY 3.0)"
     ),
+    "acrin": (
+        "Machtay M, Duan F, Siegel BA, et al. (2013). ACRIN 6668/RTOG 0235 "
+        "trial; data from The Cancer Imaging Archive: ACRIN-NSCLC-FDG-PET. "
+        "https://doi.org/10.7937/tcia.2019.30ilqfcl  (TCIA data usage policy)"
+    ),
     "chaos": (
         "Kavur AE, Gezer NS, Baris M, et al. (2021). CHAOS Challenge - combined "
         "(CT-MR) healthy abdominal organ segmentation. Medical Image Analysis, "
@@ -142,6 +147,58 @@ def fetch_chaos_t1dual(subject: int = 1, quiet: bool = False) -> pathlib.Path:
         n = len(list(marker.glob("*.dcm")))
         print(f"CHAOS subject {subject}: {n} in-phase slices in {out}")
         cite("chaos")
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# ACRIN-NSCLC-FDG-PET  (ACRIN 6668)
+# --------------------------------------------------------------------------- #
+
+def acrin_series(patient: str = "ACRIN-NSCLC-FDG-PET-001") -> list[dict]:
+    """List one ACRIN 6668 patient's series, oldest study first."""
+    series = _get_json(f"{NBIA}/getSeries?Collection=ACRIN-NSCLC-FDG-PET")
+    mine = [s for s in series if s["PatientID"] == patient]
+    mine.sort(key=lambda s: (str(s.get("SeriesDate")), s["SeriesInstanceUID"]))
+    return mine
+
+
+def fetch_acrin(patient: str = "ACRIN-NSCLC-FDG-PET-001",
+                modality: str = "PT",
+                description: str = "PET WB",
+                timepoint: int = 0,
+                quiet: bool = False) -> pathlib.Path:
+    """Download one ACRIN 6668 series and return its folder.
+
+    ``timepoint`` selects among the matching series in date order, so 0 is the
+    pre-treatment scan and 1 the follow-up.
+    """
+    matches = [s for s in acrin_series(patient)
+               if s["Modality"] == modality
+               and str(s.get("SeriesDescription", "")).strip() == description]
+    if not matches:
+        raise LookupError(f"no {modality} series described '{description}' for {patient}")
+    meta = matches[timepoint]
+
+    short = patient.rsplit("-", 1)[-1]
+    out = CACHE / "acrin" / f"{short}_{modality}_{timepoint}"
+
+    if not out.is_dir() or not any(out.glob("*.dcm")):
+        archive = out.with_suffix(".zip")
+        if not quiet:
+            print(f"Downloading {patient} {modality} '{description}' "
+                  f"timepoint {timepoint} ({meta['ImageCount']} slices) ...")
+        _download(
+            f"{NBIA}/getImage?SeriesInstanceUID={urllib.parse.quote(meta['SeriesInstanceUID'])}",
+            archive)
+        out.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(archive) as zf:
+            zf.extractall(out)
+        archive.unlink()
+
+    if not quiet:
+        print(f"{out}: {len(list(out.glob('*.dcm')))} files "
+              f"(study date {str(meta.get('SeriesDate'))[:10]})")
+        cite("acrin")
     return out
 
 
