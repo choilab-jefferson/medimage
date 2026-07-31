@@ -145,6 +145,41 @@ def fetch_chaos_t1dual(subject: int = 1, quiet: bool = False) -> pathlib.Path:
     return out
 
 
+CHAOS_LABELS = {63: "liver", 126: "right kidney", 189: "left kidney", 252: "spleen"}
+
+
+def load_chaos(subject: int = 1):
+    """Load one CHAOS subject: in-phase, out-of-phase and the reference masks.
+
+    The reference masks ship as PNG files named in acquisition order, while
+    :func:`load_series` returns slices head first. Pairing the two without
+    accounting for that silently mismatches every slice, so the reordering is
+    done here once.
+
+    Returns ``(in_phase, out_phase, labels, spacing)``. ``labels`` holds the
+    values in :data:`CHAOS_LABELS`; 0 is background.
+    """
+    import imageio.v2 as iio
+
+    folder = fetch_chaos_t1dual(subject, quiet=True)
+    base = folder / "T1DUAL"
+
+    in_phase, spacing, datasets = load_series(base / "DICOM_anon" / "InPhase",
+                                              hounsfield=False)
+    out_phase, _, _ = load_series(base / "DICOM_anon" / "OutPhase", hounsfield=False)
+
+    # Each reference PNG shares its file name with the DICOM slice it belongs to,
+    # so pair them by name rather than by position. Guessing the order from the
+    # slice geometry is what silently mismatches every slice.
+    ground = base / "Ground"
+    labels = np.stack([
+        iio.imread(ground / (pathlib.Path(d.filename).stem + ".png"))
+        for d in datasets
+    ])
+
+    return in_phase, out_phase, labels, spacing
+
+
 # --------------------------------------------------------------------------- #
 # Loading
 # --------------------------------------------------------------------------- #
