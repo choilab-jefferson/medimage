@@ -12,7 +12,7 @@ not need, and the destination is reached with the tools the earlier chapters tea
 |---|---|---|---|
 | 1. Exploration | Open a scan, read its header, Hounsfield units, orientation, viewing volumes | You cannot measure anything until the numbers mean something | ✅ ready |
 | 2. Masks and filters | Histograms, selecting pixels, denoising, morphology, edges | Fat and muscle are picked out by their HU range — after denoising | ✅ ready |
-| 3. Measurement | Labeling, object selection, area/volume, intensity statistics | Cross-sectional areas and mean HU *are* the body composition metrics | in progress |
+| 3. Measurement | Labeling, object selection, area/volume, mean HU, validating with Dice | Cross-sectional areas and mean HU *are* the body composition metrics | ✅ ready |
 | 4. Image comparison | Transformations, resampling, similarity metrics, normalization | Comparing patients requires common geometry and size-normalized indices | in progress |
 | 5. Body composition from CT | Muscle / subcutaneous fat / visceral fat quantification at L3 | The destination | in progress |
 | 6. Body composition from MR | Dixon water–fat separation, fat-fraction maps | The other modality that can do this, and why CT is still the default | in progress |
@@ -26,6 +26,7 @@ clones this repository, and installs what the runtime is missing.
 |---|---|
 | 1. Exploration | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter1_Exploration.ipynb) |
 | 2. Masks and filters | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter2_Masks_and_Filters.ipynb) |
+| 3. Measurement | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter3_Measurement.ipynb) |
 
 Locally, the same setup cell walks up to the repository root instead:
 
