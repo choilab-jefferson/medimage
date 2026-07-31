@@ -16,3 +16,6 @@ __pycache__/
 .ipynb_checkpoints/
 settings.local.json
 .claude/settings.local.json
+
+# Superseded by Chapter5_Body_Composition_CT.ipynb
+Chapter5_Body_Composition_Analysis.ipynb
