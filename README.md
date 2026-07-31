@@ -18,6 +18,7 @@ medical imaging.
 | [6. Fat quantification with MR](Chapter6_MR_Fat_Quantification.ipynb) | Dixon in/opposed-phase, fat-fraction maps, liver steatosis | The other modality that can measure fat, and why CT is still the default | ✅ ready |
 | [7. PET/CT](Chapter7_PET_CT.ipynb) | SUV, PET/CT fusion, cardiac FDG uptake, delta between timepoints | Function as well as anatomy — and a published clinical application | ✅ ready |
 | [8. Reproducing published results](Chapter8_Reproducibility.ipynb) | `qr` end to end on Lung1, compared against the paper | Whether a pipeline reproduces is the question that matters | ✅ ready |
+| [9. Patient privacy](Chapter9_Patient_Privacy.ipynb) | Finding, removing and **verifying** the removal of PHI in DICOM | Before any of the above can touch real clinical data | ✅ ready |
 
 ### What the course is actually about
 
@@ -43,6 +44,7 @@ used for testing.
 | 5. Body composition from CT | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter5_Body_Composition_CT.ipynb) |
 | 7. PET/CT | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter7_PET_CT.ipynb) |
 | 8. Reproducing published results | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter8_Reproducibility.ipynb) |
+| 9. Patient privacy | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter9_Patient_Privacy.ipynb) |
 | 6. Fat quantification with MR | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter6_MR_Fat_Quantification.ipynb) |
 
 ```bash
@@ -113,7 +115,7 @@ qr tcia download  →  qr convert  →  qr preprocess  →  qr extract  →  qr 
 | `qr results merge` | Join features with a clinical table into an analysis-ready CSV |
 | `qr analyze` | Univariate Cox survival, classification, feature importance |
 | `qr ml` | Multi-model training, benchmarking, evaluation and prediction |
-| `qr anonymize` / `qr phi` | Strip and audit PHI |
+| `qr anonymize` / `qr phi` | Strip and audit PHI (see Chapter 9) |
 
 ### TotalSegmentator
 
@@ -163,6 +165,14 @@ compares the result against the full-cohort reproduction (0.580) and the publish
 et al. (0.650). At 59 patients the measured c-index is **0.482**, indistinguishable from chance, and
 the chapter says so instead of tuning until it agrees. It separates two questions that are easy to
 confuse: whether an *effect* reproduces, and whether a *number* does.
+
+**Chapter 9 — patient privacy.** Every scan in this course arrived already de-identified. Real data
+does not. The chapter plants invented identifiers in a DICOM header, removes them under the HIPAA
+Safe Harbor profile, and then *verifies* the removal with an audit that exits non-zero on any
+finding — 24 findings before, clean after. It also shows why dates are shifted rather than deleted:
+birth date and study date both move by the same 19 days, so age at scan is preserved exactly while
+the link to the real calendar is broken. Closes on what header cleaning cannot catch — burned-in
+pixel text, private tags, and faces reconstructable from head CT.
 
 ## Honest limitations
 

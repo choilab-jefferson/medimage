@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import time
 import urllib.parse
 import urllib.request
 import zipfile
@@ -114,11 +115,16 @@ def fetch_pancreas_ct(index: int = 0, quiet: bool = False) -> pathlib.Path:
 # CHAOS T1-DUAL (Zenodo, partial download)
 # --------------------------------------------------------------------------- #
 
-def fetch_chaos_t1dual(subject: int = 1, quiet: bool = False) -> pathlib.Path:
+def fetch_chaos_t1dual(subject: int = 1, quiet: bool = False,
+                       attempts: int = 6) -> pathlib.Path:
     """Download one CHAOS subject's T1-DUAL series (~9 MB) and return its folder.
 
     Uses HTTP range requests so only the requested subject is transferred, not
-    the full 890 MB archive.
+    the full 890 MB archive. That means one request per file, which adds up:
+    fetching several subjects in a row reliably trips Zenodo's rate limit and
+    comes back as HTTP 429. Each file is therefore retried with an increasing
+    delay, and already-written files are skipped so a retry resumes rather than
+    starting over.
     """
     out = CACHE / "chaos" / str(subject)
     marker = out / "T1DUAL" / "DICOM_anon" / "InPhase"
@@ -133,15 +139,32 @@ def fetch_chaos_t1dual(subject: int = 1, quiet: bool = False) -> pathlib.Path:
             print(f"Fetching CHAOS subject {subject} from Zenodo (partial download) ...")
         out.mkdir(parents=True, exist_ok=True)
         prefix = f"Train_Sets/MR/{subject}/T1DUAL/"
-        with RemoteZip(CHAOS_ZIP) as zf:
-            names = [n for n in zf.namelist() if prefix in n and not n.endswith("/")]
-            if not names:
-                raise FileNotFoundError(f"CHAOS subject {subject} not found")
-            for name in names:
-                target = out / name.split(f"/MR/{subject}/", 1)[1]
-                target.parent.mkdir(parents=True, exist_ok=True)
-                with zf.open(name) as src, open(target, "wb") as dst:
-                    dst.write(src.read())
+
+        for attempt in range(attempts):
+            try:
+                with RemoteZip(CHAOS_ZIP) as zf:
+                    names = [n for n in zf.namelist()
+                             if prefix in n and not n.endswith("/")]
+                    if not names:
+                        raise FileNotFoundError(f"CHAOS subject {subject} not found")
+                    for name in names:
+                        target = out / name.split(f"/MR/{subject}/", 1)[1]
+                        if target.exists() and target.stat().st_size:
+                            continue          # resume where a retry left off
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        with zf.open(name) as src, open(target, "wb") as dst:
+                            dst.write(src.read())
+                break
+            except FileNotFoundError:
+                raise
+            except Exception as exc:          # rate limiting, dropped connections
+                if attempt == attempts - 1:
+                    raise
+                delay = 5 * 2 ** attempt
+                if not quiet:
+                    print(f"  {type(exc).__name__}: retrying in {delay}s "
+                          f"({attempt + 1}/{attempts - 1})")
+                time.sleep(delay)
 
     if not quiet:
         n = len(list(marker.glob("*.dcm")))
