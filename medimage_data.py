@@ -274,7 +274,7 @@ def load_series(folder, hounsfield: bool = True):
     rows running back-to-front, and many abdominal series do.
 
     Returns ``(volume, spacing, datasets)`` where ``spacing`` is
-    ``(dz, dy, dx)`` in millimetres. When ``hounsfield`` is true the rescale
+    ``(dz, dy, dx)`` in millimeters. When ``hounsfield`` is true the rescale
     slope and intercept from the header are applied, so the values are in HU.
     """
     folder = pathlib.Path(folder)

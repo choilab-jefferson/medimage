@@ -13,7 +13,7 @@ medical imaging.
 | [1. Exploration](Chapter1_Exploration.ipynb) | DICOM, headers, Hounsfield units, image orientation, viewing volumes | You cannot measure anything until the numbers mean something | ✅ ready |
 | [2. Masks and filters](Chapter2_Masks_and_Filters.ipynb) | Histograms, selecting pixels, denoising, morphology, edges | Fat and muscle are picked out by their HU range — after denoising | ✅ ready |
 | [3. Measurement](Chapter3_Measurement.ipynb) | Labeling, object selection, area and volume, mean HU, validating with Dice | Areas and mean HU *are* the body composition numbers | ✅ ready |
-| [4. Image comparison](Chapter4_Image_Comparison.ipynb) | Resampling, transformations, similarity metrics, normalisation | Two patients are different sizes, so raw numbers cannot be compared | ✅ ready |
+| [4. Image comparison](Chapter4_Image_Comparison.ipynb) | Resampling, transformations, similarity metrics, normalization | Two patients are different sizes, so raw numbers cannot be compared | ✅ ready |
 | [5. Body composition from CT](Chapter5_Body_Composition_CT.ipynb) | Finding L3, verifying a pretrained model, muscle / SAT / VAT, the muscle index | The destination | ✅ ready |
 | [6. Fat quantification with MR](Chapter6_MR_Fat_Quantification.ipynb) | Dixon in/opposed-phase, fat-fraction maps, liver steatosis | The other modality that can measure fat, and why CT is still the default | ✅ ready |
 | [7. PET/CT](Chapter7_PET_CT.ipynb) | SUV, PET/CT fusion, cardiac FDG uptake, delta between timepoints | Function as well as anatomy — and a published clinical application | ✅ ready |
@@ -111,7 +111,7 @@ qr tcia download  →  qr convert  →  qr preprocess  →  qr extract  →  qr 
 | `qr preprocess` | Crop to an ROI and resample image/mask pairs |
 | `qr extract` | Radiomics features from a manifest, with curated patterns and multiple engines |
 | `qr delta` | Delta and trend features across timepoints |
-| `qr shape` | Shape descriptors — AHSN, spiculation |
+| `qr shape` | Shape descriptors — AHSN, spiculation (see Chapter 8) |
 | `qr results merge` | Join features with a clinical table into an analysis-ready CSV |
 | `qr analyze` | Univariate Cox survival, classification, feature importance |
 | `qr ml` | Multi-model training, benchmarking, evaluation and prediction |
@@ -152,7 +152,7 @@ the method where it genuinely works — liver steatosis — measuring 2.9%, 3.7%
 four subjects against the 5% clinical threshold, with the spleen as a noise-floor control.
 
 **Chapter 7 — PET/CT.** PET measures function rather than anatomy, and SUV is its calibrated unit —
-the PET analogue of the Hounsfield unit. The chapter converts an ACRIN 6668 PET series to SUV with
+the PET analog of the Hounsfield unit. The chapter converts an ACRIN 6668 PET series to SUV with
 the QIBA-standard converter in qradiomics, resamples it onto the CT grid, and measures uptake in the
 heart against the liver as reference. The liver reads SUV 2.27, right on the expected value, which
 is what validates the conversion before anything is interpreted. Framed by Choi et al.,
@@ -166,6 +166,14 @@ et al. (0.650). At 59 patients the measured c-index is **0.482**, indistinguisha
 the chapter says so instead of tuning until it agrees. It separates two questions that are easy to
 confuse: whether an *effect* reproduces, and whether a *number* does.
 
+It then turns to a second, cleaner kind of reproduction. Where the Aerts signature reproduces 0.07
+below its published value, three of four reproductions of the Choi lab's own methods land **at or
+above** theirs — the spiculation feature set (Choi 2021 CMPB) matches almost exactly at AUC 0.816.
+The chapter runs `qr shape` to compute those six interpretable descriptors on the cohort and uses
+the contrast to make a general point: *methods* reproduce more reliably than *fitted models*,
+because a geometric measurement is defined by its algorithm while a signature depends on the cohort,
+the software version and the modeling choices.
+
 **Chapter 9 — patient privacy.** Every scan in this course arrived already de-identified. Real data
 does not. The chapter plants invented identifiers in a DICOM header, removes them under the HIPAA
 Safe Harbor profile, and then *verifies* the removal with an audit that exits non-zero on any
@@ -177,11 +185,11 @@ pixel text, private tags, and faces reconstructable from head CT.
 ## Honest limitations
 
 - The course measures body composition on **pancreas-protocol CT**, which covers L3 but was acquired
-  for a different purpose. Published cut-offs come from cohorts scanned and analysed differently.
+  for a different purpose. Published cut-offs come from cohorts scanned and analyzed differently.
 - Every number these notebooks produce is a **demonstration of a method, not a clinical
   measurement**. Each chapter states its own limitations where they apply.
 - Chapter 3 deliberately ends on a failed segmentation (Dice 0.45, volume 3× too large) and
-  Chapter 4 on an over-corrected normalisation, because knowing why a simple method fails is what
+  Chapter 4 on an over-corrected normalization, because knowing why a simple method fails is what
   tells you when to reach for a complicated one.
 
 ## License
