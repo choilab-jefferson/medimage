@@ -150,7 +150,13 @@ def fetch_chaos_t1dual(subject: int = 1, quiet: bool = False) -> pathlib.Path:
 # --------------------------------------------------------------------------- #
 
 def load_series(folder, hounsfield: bool = True):
-    """Read a folder of DICOM slices into a volume sorted head-to-foot.
+    """Read a folder of DICOM slices into a volume in radiological orientation.
+
+    Slices are ordered head first, and each frame is flipped as required by
+    ``ImageOrientationPatient`` so that ``imshow`` draws anterior at the top and
+    the patient's left on the right. Ignoring those direction cosines is a
+    common source of silently upside-down images: a scanner is free to store
+    rows running back-to-front, and many abdominal series do.
 
     Returns ``(volume, spacing, datasets)`` where ``spacing`` is
     ``(dz, dy, dx)`` in millimetres. When ``hounsfield`` is true the rescale
@@ -161,7 +167,16 @@ def load_series(folder, hounsfield: bool = True):
     if not datasets:
         raise FileNotFoundError(f"no DICOM files in {folder}")
 
-    datasets.sort(key=lambda d: float(d.ImagePositionPatient[2]))
+    # Head first: the most superior slice becomes index 0, so coronal and
+    # sagittal reformats come out the right way up.
+    datasets.sort(key=lambda d: float(d.ImagePositionPatient[2]), reverse=True)
+
+    # Direction cosines of the row and column axes, in LPS coordinates.
+    orientation = [float(v) for v in getattr(datasets[0], "ImageOrientationPatient",
+                                             [1, 0, 0, 0, 1, 0])]
+    col_dir, row_dir = orientation[:3], orientation[3:]
+    flip_rows = row_dir[1] < 0      # rows run posterior -> anterior
+    flip_cols = col_dir[0] < 0      # columns run right -> left
 
     frames = []
     for d in datasets:
@@ -170,6 +185,10 @@ def load_series(folder, hounsfield: bool = True):
             frame = frame * float(getattr(d, "RescaleSlope", 1)) + float(
                 getattr(d, "RescaleIntercept", 0)
             )
+        if flip_rows:
+            frame = frame[::-1, :]
+        if flip_cols:
+            frame = frame[:, ::-1]
         frames.append(frame)
     volume = np.stack(frames).astype(np.int16 if hounsfield else np.float32)
 

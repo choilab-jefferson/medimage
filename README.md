@@ -10,8 +10,8 @@ not need, and the destination is reached with the tools the earlier chapters tea
 
 | Chapter | You learn | Why the final analysis needs it | Status |
 |---|---|---|---|
-| 1. Exploration | Load DICOM, read metadata, Hounsfield units, plot N-dimensional volumes | Every measurement starts from correctly loaded, correctly scaled voxels | ✅ ready |
-| 2. Masks and filters | Histograms, thresholding, convolution, denoising, edge detection | Fat and muscle are selected by HU thresholds — after denoising | in progress |
+| 1. Exploration | Open a scan, read its header, Hounsfield units, orientation, viewing volumes | You cannot measure anything until the numbers mean something | ✅ ready |
+| 2. Masks and filters | Histograms, selecting pixels, denoising, morphology, edges | Fat and muscle are picked out by their HU range — after denoising | ✅ ready |
 | 3. Measurement | Labeling, object selection, area/volume, intensity statistics | Cross-sectional areas and mean HU *are* the body composition metrics | in progress |
 | 4. Image comparison | Transformations, resampling, similarity metrics, normalization | Comparing patients requires common geometry and size-normalized indices | in progress |
 | 5. Body composition from CT | Muscle / subcutaneous fat / visceral fat quantification at L3 | The destination | in progress |
@@ -25,6 +25,7 @@ clones this repository, and installs what the runtime is missing.
 | Chapter | |
 |---|---|
 | 1. Exploration | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter1_Exploration.ipynb) |
+| 2. Masks and filters | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter2_Masks_and_Filters.ipynb) |
 
 Locally, the same setup cell walks up to the repository root instead:
 
