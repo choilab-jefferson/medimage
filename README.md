@@ -15,7 +15,7 @@ medical imaging.
 | [3. Measurement](Chapter3_Measurement.ipynb) | Labeling, object selection, area and volume, mean HU, validating with Dice | Areas and mean HU *are* the body composition numbers | ✅ ready |
 | [4. Image comparison](Chapter4_Image_Comparison.ipynb) | Resampling, transformations, similarity metrics, normalisation | Two patients are different sizes, so raw numbers cannot be compared | ✅ ready |
 | 5. Body composition from CT | Muscle, subcutaneous and visceral fat at the L3 vertebra | The destination | in progress |
-| 6. Body composition from MR | Dixon water–fat separation, fat-fraction maps | The other modality that can do this, and why CT is still the default | in progress |
+| [6. Fat quantification with MR](Chapter6_MR_Fat_Quantification.ipynb) | Dixon in/opposed-phase, fat-fraction maps, liver steatosis | The other modality that can measure fat, and why CT is still the default | ✅ ready |
 | 7. PET/CT | SUV, PET/CT fusion, cardiac FDG uptake, delta radiomics | Function as well as anatomy — and a published clinical application | in progress |
 | 8. Reproducing published results | `qr` end to end on a public cohort, compared against the paper | Whether a pipeline reproduces is the question that matters | in progress |
 
@@ -40,6 +40,7 @@ used for testing.
 | 2. Masks and filters | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter2_Masks_and_Filters.ipynb) |
 | 3. Measurement | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter3_Measurement.ipynb) |
 | 4. Image comparison | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter4_Image_Comparison.ipynb) |
+| 6. Fat quantification with MR | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter6_MR_Fat_Quantification.ipynb) |
 
 ```bash
 git clone https://github.com/choilab-jefferson/medimage.git
@@ -135,10 +136,12 @@ The notebook finds `TotalSegmentator` on `$PATH` or in `.venv-ts/bin/`. No GPU i
 visceral fat, convert to areas and indices, extend to radiomics features, and scale the workflow to
 a cohort.
 
-**Chapter 6 — body composition from MR.** MRI is arguably the reference standard for adipose tissue,
-because Dixon acquisitions separate fat and water physically rather than by brightness. The chapter
-derives water and fat images from in-phase and out-of-phase scans, builds a fat-fraction map, and
-then states plainly where 2-point Dixon falls short of true PDFF.
+**Chapter 6 — fat quantification with MR.** MRI separates fat from water physically rather than by
+brightness, using the slightly different precession rates of their hydrogen. The chapter derives
+water and fat images from in-phase and opposed-phase scans, then shows that the resulting fat
+fraction cannot exceed 50% and silently swaps fat for water wherever fat dominates. It then applies
+the method where it genuinely works — liver steatosis — measuring 2.9%, 3.7%, 6.8% and 24.8% across
+four subjects against the 5% clinical threshold, with the spleen as a noise-floor control.
 
 **Chapter 7 — PET/CT.** PET measures function rather than anatomy, and SUV is its calibrated unit —
 the PET analogue of the Hounsfield unit. The chapter covers SUV conversion, PET/CT fusion, uptake in
