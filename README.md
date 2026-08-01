@@ -19,6 +19,7 @@ medical imaging.
 | [7. PET/CT](Chapter7_PET_CT.ipynb) | SUV, PET/CT fusion, cardiac FDG uptake, delta between timepoints | Function as well as anatomy — and a published clinical application | ✅ ready |
 | [8. Reproducing published results](Chapter8_Reproducibility.ipynb) | `qr` end to end on Lung1, compared against the paper | Whether a pipeline reproduces is the question that matters | ✅ ready |
 | [9. Patient privacy](Chapter9_Patient_Privacy.ipynb) | Finding, removing and **verifying** the removal of PHI in DICOM | Before any of the above can touch real clinical data | ✅ ready |
+| [10. Radiomics features](Chapter10_Radiomics_Features.ipynb) | The three feature families, patterns, and what preprocessing does to each | Knowing which of your 1130 numbers will survive someone else running the pipeline | ✅ ready |
 
 ### What the course is actually about
 
@@ -45,6 +46,7 @@ used for testing.
 | 7. PET/CT | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter7_PET_CT.ipynb) |
 | 8. Reproducing published results | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter8_Reproducibility.ipynb) |
 | 9. Patient privacy | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter9_Patient_Privacy.ipynb) |
+| 10. Radiomics features | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter10_Radiomics_Features.ipynb) |
 | 6. Fat quantification with MR | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter6_MR_Fat_Quantification.ipynb) |
 
 ```bash
