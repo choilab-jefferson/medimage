@@ -13,3 +13,11 @@ SimpleITK>=2.4
 qradiomics>=1.0
 lifelines>=0.30
 remotezip>=0.12
+
+# Chapters 10-13 (feature extraction, registration, delta, classification)
+statsmodels>=0.14
+scikit-learn>=1.5
+lightgbm>=4.5
+xgboost>=2.1
+opencv-python-headless>=4.10
+rt-utils>=1.2
