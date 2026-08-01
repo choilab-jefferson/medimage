@@ -48,6 +48,11 @@ CITATIONS = {
         "trial; data from The Cancer Imaging Archive: ACRIN-NSCLC-FDG-PET. "
         "https://doi.org/10.7937/tcia.2019.30ilqfcl  (TCIA data usage policy)"
     ),
+    "lung1": (
+        "Aerts HJWL, Wee L, Rios Velazquez E, et al. (2019). Data From "
+        "NSCLC-Radiomics. The Cancer Imaging Archive. "
+        "https://doi.org/10.7937/K9/TCIA.2015.PF0M9REI  (CC BY-NC 3.0)"
+    ),
     "chaos": (
         "Kavur AE, Gezer NS, Baris M, et al. (2021). CHAOS Challenge - combined "
         "(CT-MR) healthy abdominal organ segmentation. Medical Image Analysis, "
@@ -223,6 +228,118 @@ def fetch_acrin(patient: str = "ACRIN-NSCLC-FDG-PET-001",
               f"(study date {str(meta.get('SeriesDate'))[:10]})")
         cite("acrin")
     return out
+
+
+# --------------------------------------------------------------------------- #
+# NSCLC-Radiomics (Lung1) cohort — CT + tumor contour + clinical outcomes
+# --------------------------------------------------------------------------- #
+
+LUNG1_CLINICAL = ("https://www.cancerimagingarchive.net/wp-content/uploads/"
+                  "NSCLC-Radiomics-Lung1.clinical-version3-Oct-2019.csv")
+
+
+def fetch_lung1_cohort(n_patients: int = 60, work=None, quiet: bool = False):
+    """Prepare a Lung1 subset and return the paths every later chapter needs.
+
+    Runs the whole `qr` chain once — download, RTSTRUCT conversion, crop and
+    resample, feature extraction, clinical merge — and caches every artifact,
+    so any chapter can call this without depending on another having been run
+    first. Returns a dict of paths.
+
+    Requires the ``qr`` CLI plus ``rt-utils`` and ``opencv-python-headless``;
+    the ordinary OpenCV build needs a graphics library that servers lack, and
+    without the headless one every contour conversion fails on ``libGL.so.1``.
+    """
+    import subprocess
+
+    import pandas as pd
+
+    work = pathlib.Path(work or CACHE.parent / "work" / "lung1")
+    work.mkdir(parents=True, exist_ok=True)
+    paths = {
+        "work": work,
+        "series": work / "series.csv",
+        "nrrd": work / "nrrd",
+        "cropped": work / "cropped",
+        "features": work / "features.csv",
+        "clinical": work / "clinical.csv",
+        "analysis_ready": work / "analysis_ready.csv",
+    }
+    say = (lambda *a: None) if quiet else print
+
+    if not paths["series"].exists():
+        say("Listing NSCLC-Radiomics series ...")
+        subprocess.run(["qr", "tcia", "series", "--collection", "NSCLC-Radiomics",
+                        "-o", str(paths["series"])], check=True, capture_output=True)
+    series = pd.read_csv(paths["series"])
+
+    with_ct = set(series.loc[series.Modality == "CT", "PatientID"])
+    with_rt = set(series.loc[series.Modality == "RTSTRUCT", "PatientID"])
+    patients = sorted(with_ct & with_rt)[:n_patients]
+    targets = series[series.PatientID.isin(patients)
+                     & series.Modality.isin(["CT", "RTSTRUCT"])]
+    target_csv = work / "targets.csv"
+    targets.to_csv(target_csv, index=False)
+
+    dicom_dir = work / "dicom"
+    if not dicom_dir.is_dir() or len(list(dicom_dir.glob("*"))) < len(patients):
+        say(f"Downloading {len(patients)} patients from TCIA ...")
+        subprocess.run(["qr", "tcia", "download", "--manifest", str(target_csv),
+                        "-o", str(dicom_dir), "-j", "8"], check=True, capture_output=True)
+
+    paths["nrrd"].mkdir(exist_ok=True)
+    ct_rows = targets[targets.Modality == "CT"]
+    rt_rows = targets[targets.Modality == "RTSTRUCT"]
+
+    def series_dir(row):
+        return dicom_dir / row.PatientID / row.StudyInstanceUID / row.SeriesInstanceUID
+
+    for _, row in ct_rows.iterrows():
+        out = paths["nrrd"] / f"{row.PatientID}_image.nrrd"
+        if not out.exists():
+            subprocess.run(["qr", "convert", "dicom-series", "-i", str(series_dir(row)),
+                            "-o", str(out)], capture_output=True)
+    for _, row in rt_rows.iterrows():
+        out = paths["nrrd"] / f"{row.PatientID}_mask.nrrd"
+        match = ct_rows[ct_rows.PatientID == row.PatientID]
+        if out.exists() or match.empty:
+            continue
+        # --roi GTV-1 is not optional: without it the converter takes the first
+        # contour in the structure set, which in Lung1 is often a lung or the cord.
+        subprocess.run(["qr", "convert", "rtstruct", "-d", str(series_dir(match.iloc[0])),
+                        "-r", str(series_dir(row)), "--roi", "GTV-1", "-o", str(out)],
+                       capture_output=True)
+
+    manifest = paths["nrrd"] / "manifest.csv"
+    subprocess.run(["qr", "convert", "manifest-from-dir", "-d", str(paths["nrrd"]),
+                    "--image-glob", "*_image.nrrd", "--mask-glob", "*_mask.nrrd",
+                    "-o", str(manifest)], check=True, capture_output=True)
+    subprocess.run(["qr", "preprocess", "-m", str(manifest), "-o", str(paths["cropped"]),
+                    "--pad-mm", "5", "--resample", "1.0", "--jobs", "4",
+                    "--out-manifest", str(paths["cropped"] / "manifest.csv")],
+                   check=True, capture_output=True)
+
+    if not paths["features"].exists():
+        say("Extracting features (nsclc-survival pattern) ...")
+        subprocess.run(["qr", "extract", "-m", str(paths["cropped"] / "manifest.csv"),
+                        "-p", "nsclc-survival", "-o", str(paths["features"]), "-j", "4"],
+                       check=True, capture_output=True)
+
+    if not paths["clinical"].exists():
+        _download(LUNG1_CLINICAL, paths["clinical"])
+
+    if not paths["analysis_ready"].exists():
+        subprocess.run(["qr", "results", "merge", "-f", str(paths["features"]),
+                        "-c", str(paths["clinical"]), "--clinical-id-col", "PatientID",
+                        "--time-col", "Survival.time", "--event-col", "deadstatus.event",
+                        "-o", str(paths["analysis_ready"])], check=True, capture_output=True)
+
+    if not quiet:
+        ready = pd.read_csv(paths["analysis_ready"])
+        print(f"Lung1 cohort ready: {len(ready)} patients, "
+              f"{ready.shape[1] - 3} features in {work}")
+        cite("lung1")
+    return paths
 
 
 CHAOS_LABELS = {63: "liver", 126: "right kidney", 189: "left kidney", 252: "spleen"}
