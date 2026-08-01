@@ -21,6 +21,8 @@ medical imaging.
 | [9. Patient privacy](Chapter9_Patient_Privacy.ipynb) | Finding, removing and **verifying** the removal of PHI in DICOM | Before any of the above can touch real clinical data | ✅ ready |
 | [10. Radiomics features](Chapter10_Radiomics_Features.ipynb) | The three feature families, patterns, and what preprocessing does to each | Knowing which of your 1130 numbers will survive someone else running the pipeline | ✅ ready |
 | [11. Registration](Chapter11_Registration.ipynb) | Two engines, scoring in millimeters, and diagnosing a registration that fails silently | Aligning scans is where pipelines break without saying so | ✅ ready |
+| 12. Delta radiomics | Measuring change between timepoints, and how much of it is segmentation noise | Change is often more informative than any single value | in progress |
+| [13. Classification](Chapter13_Classification.ipynb) | Benchmarking eight models, and a real data leak that produced AUC 1.000 | An implausibly good result is a bug report, not a finding | ✅ ready |
 
 ### What the course is actually about
 
@@ -49,6 +51,7 @@ used for testing.
 | 9. Patient privacy | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter9_Patient_Privacy.ipynb) |
 | 10. Radiomics features | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter10_Radiomics_Features.ipynb) |
 | 11. Registration | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter11_Registration.ipynb) |
+| 13. Classification | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter13_Classification.ipynb) |
 | 6. Fat quantification with MR | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/choilab-jefferson/medimage/blob/main/Chapter6_MR_Fat_Quantification.ipynb) |
 
 ```bash
@@ -118,7 +121,7 @@ qr tcia download  →  qr convert  →  qr preprocess  →  qr extract  →  qr 
 | `qr shape` | Shape descriptors — AHSN, spiculation (see Chapter 8) |
 | `qr results merge` | Join features with a clinical table into an analysis-ready CSV |
 | `qr analyze` | Univariate Cox survival, classification, feature importance |
-| `qr ml` | Multi-model training, benchmarking, evaluation and prediction |
+| `qr ml` | Multi-model training, benchmarking, evaluation and prediction (see Chapter 13) |
 | `qr anonymize` / `qr phi` | Strip and audit PHI (see Chapter 9) |
 
 ### TotalSegmentator
