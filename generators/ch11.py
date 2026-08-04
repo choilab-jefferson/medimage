@@ -37,6 +37,7 @@ import sys
 
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "qradiomics", "SimpleITK"],
                check=True)
+print("installed")
 """),
 ("code", """\
 import collections

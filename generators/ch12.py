@@ -34,6 +34,7 @@ import sys
 
 subprocess.run([sys.executable, "-m", "pip", "install", "-q",
                 "qradiomics", "statsmodels", "lightgbm", "xgboost"], check=True)
+print("installed")
 """),
 ("code", """\
 import json
