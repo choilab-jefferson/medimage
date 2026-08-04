@@ -416,7 +416,7 @@ Stated plainly, because every number above has them:
 - **One slice, one patient.** Chapter 13 shows what it takes to make a claim from a cohort.
 
 None of this makes the method wrong. It makes the numbers *illustrative of the method*, which is
-what a teaching notebook can honestly offer.
+what a teaching notebook can offer.
 
 ## Exercises
 

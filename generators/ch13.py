@@ -146,7 +146,7 @@ overfitted model that produces believable-looking values.
 """),
 
 ("md", """\
-## 3. The honest measure: cross-validated prediction
+## 3. Cross-validated prediction
 
 Univariate p-values say which features *look* associated with survival in the data you have. They do
 not say whether a model built from them predicts anything about patients it has never seen.
@@ -210,7 +210,7 @@ carry over to the held-out patients.
 
 **Do not tune your way out of this.** Faced with 0.48 it is easy to try a different feature count, a
 different penalty, a different fold count, and stop when a run happens to produce 0.6. That number
-would be a description of the search, not of the data. The honest conclusion from this run is that
+would be a description of the search, not of the data. The conclusion from this run is that
 sixty patients cannot answer the question.
 
 **The full-cohort reproduction reaches 0.580 against a published 0.650.** That gap is a real and
