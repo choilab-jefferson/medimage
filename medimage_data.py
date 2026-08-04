@@ -294,10 +294,16 @@ def fetch_lung1_cohort(n_patients: int = 60, work=None, quiet: bool = False):
     def series_dir(row):
         return dicom_dir / row.PatientID / row.StudyInstanceUID / row.SeriesInstanceUID
 
+    # Per-patient conversions warn and skip rather than raising: the manifest below is
+    # built from whatever landed on disk, so one unreadable series costs one patient
+    # instead of the whole cohort. The cohort-wide steps after it do use check=True.
     for _, row in ct_rows.iterrows():
         out = paths["nrrd"] / f"{row.PatientID}_image.nrrd"
         if not out.exists():
-            subprocess.run(["qr", "convert", "dicom-series", "-i", str(series_dir(row)), "-o", str(out)], check=True, capture_output=quiet, text=True)
+            done = subprocess.run(["qr", "convert", "dicom-series", "-i", str(series_dir(row)),
+                                   "-o", str(out)], capture_output=True, text=True)
+            if done.returncode:
+                say(f"  {row.PatientID}: CT conversion failed, skipping")
     for _, row in rt_rows.iterrows():
         out = paths["nrrd"] / f"{row.PatientID}_mask.nrrd"
         match = ct_rows[ct_rows.PatientID == row.PatientID]
@@ -305,9 +311,11 @@ def fetch_lung1_cohort(n_patients: int = 60, work=None, quiet: bool = False):
             continue
         # --roi GTV-1 is not optional: without it the converter takes the first
         # contour in the structure set, which in Lung1 is often a lung or the cord.
-        subprocess.run(["qr", "convert", "rtstruct", "-d", str(series_dir(match.iloc[0])),
-                        "-r", str(series_dir(row)), "--roi", "GTV-1", "-o", str(out)],
-                       capture_output=True)
+        done = subprocess.run(["qr", "convert", "rtstruct", "-d", str(series_dir(match.iloc[0])),
+                               "-r", str(series_dir(row)), "--roi", "GTV-1", "-o", str(out)],
+                              capture_output=True, text=True)
+        if done.returncode:
+            say(f"  {row.PatientID}: no GTV-1 contour in the structure set, skipping")
 
     manifest = paths["nrrd"] / "manifest.csv"
     subprocess.run(["qr", "convert", "manifest-from-dir", "-d", str(paths["nrrd"]),
