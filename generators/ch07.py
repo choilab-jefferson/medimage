@@ -19,7 +19,7 @@ the fact that hydrogen atoms in fat and in water spin at slightly different rate
 signals interfere. The answer comes out as a **proportion**, which is exactly the calibrated
 quantity that raw MRI brightness lacks.
 
-This chapter builds that measurement, finds where it breaks, and ends up somewhere more honest than
+This chapter builds that measurement, finds where it breaks, and ends up somewhere narrower than
 where it started.
 
 By the end you will be able to:

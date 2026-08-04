@@ -203,7 +203,7 @@ is what validates the conversion before anything is interpreted. Framed by Choi 
 JCO Clinical Cancer Informatics 2024 ([PMID 38452302](https://pubmed.ncbi.nlm.nih.gov/38452302/)).
 
 **Chapter 12 — classification, and a result that was too good.** Benchmarks eight models on two
-labels. Histology comes back at chance, which is the honest answer. Two-year mortality comes back at
+labels. Histology comes back at chance. Two-year mortality comes back at
 **AUC 1.000** with zero variance across folds — and the chapter treats that as a bug report rather
 than a finding. The leak is that the label was derived from `OS_months` and `OS_event`, both still
 sitting in the feature table; dropping two columns takes the best model from 1.000 to about 0.65.
@@ -236,7 +236,7 @@ birth date and study date both move by the same 19 days, so age at scan is prese
 the link to the real calendar is broken. Closes on what header cleaning cannot catch — burned-in
 pixel text, private tags, and faces reconstructable from head CT.
 
-## Honest limitations
+## Limitations
 
 - The course measures body composition on **pancreas-protocol CT**, which covers L3 but was acquired
   for a different purpose. Published cut-offs come from cohorts scanned and analyzed differently.

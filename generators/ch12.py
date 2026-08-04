@@ -139,7 +139,7 @@ squamous histology in fifty-nine patients.
 Note what the tool nonetheless reports: a **best** model. With eight candidates scored on the same
 data, one of them wins by luck alone, and its score is biased upward precisely because it was chosen
 for being highest. "We evaluated eight models and selected the best" is a multiple-comparisons
-problem wearing a methods-section disguise. The honest summary of this table is that the *spread*
+problem wearing a methods-section disguise. What this table shows is that the *spread*
 contains 0.5.
 """),
 
@@ -248,7 +248,7 @@ Leaks that are worth watching for in imaging studies:
 The general defense is to ask one question of every column: *could this have been known only after
 the outcome was?* If yes, it does not belong in the input.
 
-## 6. What the honest result looks like
+## 6. The result after the fix
 
 After the fix, the best model reaches roughly 0.65 out-of-fold on two-year mortality, and the spread
 across models is wide. That is a weak signal in a small cohort — plausible, unremarkable, and worth
@@ -348,7 +348,7 @@ hundred patients, a held-out hundred and fifty gives an interval narrow enough t
 protects against exactly the kind of mistake section 5 uncovered. At fifty-nine, cross-validation
 over everyone is the most the data will support, and section 3 already showed how wide even that is.
 
-So the honest report for this cohort is the cross-validated number, its spread, and a sentence saying
+So what to report for this cohort is the cross-validated number, its spread, and a sentence saying
 the cohort is too small to hold anything out. The third command in this family, `qr ml predict`,
 applies a saved model to a feature table that has no labels at all — which is what you would reach
 for once a model is finished and real patients start arriving.

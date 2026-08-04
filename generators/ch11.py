@@ -267,8 +267,8 @@ floor. It is what this pipeline produces from nothing.
 The heart reports about the same. Whatever genuinely happened to the heart between these two scans
 is smaller than the noise, or indistinguishable from it at this cohort size.
 
-Reporting the heart number alone would have looked like a result. It is the control that turns it
-into an honest one.
+Reporting the heart number alone would have looked like a result. The control is what tells you
+whether it is one.
 """),
 ("code", """\
 fig, axes = plt.subplots(1, 2, figsize=(13, 4))
