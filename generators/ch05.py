@@ -253,7 +253,10 @@ for label, folder in [("BEFORE anonymization", WORK / "original"),
                       ("AFTER anonymization", WORK / "clean")]:
     audit = subprocess.run(["qr", "phi", "audit", str(folder), "--limit", "6"],
                            capture_output=True, text=True)
-    findings = [line for line in audit.stdout.splitlines() if line.strip()]
+    # The audit reports absolute paths; show them relative to the repository so the
+    # output does not depend on where the checkout happens to live.
+    root = str(pathlib.Path.cwd()) + "/"
+    findings = [line.replace(root, "") for line in audit.stdout.splitlines() if line.strip()]
     print(f"=== {label} — exit code {audit.returncode} ===")
     for line in findings[:5]:
         print("   ", line.split("::")[-1].strip()[:100] if "::" in line else line[:100])

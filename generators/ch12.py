@@ -292,11 +292,12 @@ for seed in range(6):
     cv_metrics = holdout_dir / f"cv{seed}.json"
     report = holdout_dir / f"holdout{seed}.json"
 
-    # Keep the model-training RNG fixed so the only changing factor is the train/test split.
+    # There is no seed to pin here: qr ml train exposes none, and it does not need one.
+    # The estimator is deterministic given its input, so the train/test split below is
+    # the only thing that varies between these six runs -- which is the point.
     subprocess.run(["qr", "ml", "train", "-i", str(train_csv), "--task", "classify",
                     "--outcome", "dead_2y", "--model", str(model),
-                    "--metrics", str(cv_metrics), "--top-features", "20",
-                    "--seed", "0"],
+                    "--metrics", str(cv_metrics), "--top-features", "20"],
                    check=True, capture_output=True, text=True)
     subprocess.run(["qr", "ml", "evaluate", "-i", str(test_csv), "--model", str(model),
                     "--task", "classify", "--outcome", "dead_2y", "--report", str(report)],
