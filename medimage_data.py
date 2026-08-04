@@ -297,8 +297,7 @@ def fetch_lung1_cohort(n_patients: int = 60, work=None, quiet: bool = False):
     for _, row in ct_rows.iterrows():
         out = paths["nrrd"] / f"{row.PatientID}_image.nrrd"
         if not out.exists():
-            subprocess.run(["qr", "convert", "dicom-series", "-i", str(series_dir(row)),
-                            "-o", str(out)], capture_output=True)
+            subprocess.run(["qr", "convert", "dicom-series", "-i", str(series_dir(row)), "-o", str(out)], check=True, capture_output=quiet, text=True)
     for _, row in rt_rows.iterrows():
         out = paths["nrrd"] / f"{row.PatientID}_mask.nrrd"
         match = ct_rows[ct_rows.PatientID == row.PatientID]
