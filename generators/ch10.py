@@ -119,6 +119,51 @@ describe_pair(volumes[0], volumes[1], "ACRIN timepoint 0 vs timepoint 1")
 92% overlap, but the centers are 98 mm apart — the two scans cover different lengths of the patient.
 That is worth knowing before rather than after: a large center offset is exactly the situation where
 an optimizer started from the identity transform has nothing useful to follow.
+
+Numbers like that are easier to trust once you have seen them. Drawing both scans on a **shared
+world-coordinate axis** — rather than each scaled to its own frame, which is what `imshow` does by
+default — puts the offset on screen.
+"""),
+("code", """\
+def coronal_extent(image):
+    \"\"\"(left, right, bottom, top) of a coronal slice, in world millimetres.\"\"\"
+    nz, ny, nx = sitk.GetArrayFromImage(image).shape
+    ox, oy, oz = image.GetOrigin()
+    sx, sy, sz = image.GetSpacing()
+    return (ox, ox + nx * sx, oz + nz * sz, oz)
+
+
+fig, axes = plt.subplots(1, 2, figsize=(8.5, 5.4))
+limits = []
+for ax, timepoint in zip(axes, (0, 1)):
+    image = volumes[timepoint]
+    arr = sitk.GetArrayFromImage(image)
+    extent = coronal_extent(image)
+    limits += [extent[2], extent[3]]
+
+    ax.imshow(arr[:, arr.shape[1] // 2, :], cmap="gray", vmin=-160, vmax=240, extent=extent)
+    ax.set_facecolor("black")
+    ax.set_title(f"timepoint {timepoint}", fontsize=10)
+    ax.set_xlabel("x (mm)")
+
+    center = (extent[2] + extent[3]) / 2
+    ax.axhline(center, color="tab:orange", linestyle="--", linewidth=1.2)
+    ax.text(extent[0] + 10, center - 18, "volume center", color="tab:orange", fontsize=8)
+
+for ax in axes:
+    ax.set_ylim(max(limits), min(limits))
+    ax.set_aspect("equal")
+
+axes[0].set_ylabel("z (mm, world coordinates — shared scale)")
+plt.tight_layout()
+plt.show()
+"""),
+
+("md", """\
+The second scan covers a much shorter length of the patient, and its dashed center line sits well
+below the first. That gap is almost all of the offset the numbers reported: of the 97.9 mm total,
+96.8 mm is in z and the rest is a 15 mm shift in y. An optimizer handed these two images without
+being told about it starts by comparing the upper abdomen of one against the pelvis of the other.
 """),
 
 ("md", """\
@@ -371,6 +416,63 @@ centered = sitk.ReadTransform(str(WORK / "centered_xform.txt"))
 
 print(f"ITK errors {errors}")
 print(f"TRE        {tre(centered):.2f} mm")
+"""),
+
+("md", """\
+Look at what the guidebook run reported: 12.47 mm, which is the misalignment it started with, to the
+hundredth of a millimetre. It did not move the image at all. Fixing the rotation center brings that
+to 4.70 mm, and SimpleITK's centered initialization reaches 0.08 mm.
+
+Those are numbers. What they look like is the more useful thing, because a picture is what you will
+actually have in front of you when a registration goes wrong on data with no known answer.
+
+Draw the fixed image into the green channel and the resampled moving image into red and blue. Where
+the two agree the channels balance and the result is grey; where they disagree one colour is left
+standing. Misalignment shows up as coloured fringing along every edge.
+"""),
+("code", """\
+def overlay(ax, transform, title):
+    \"\"\"Fixed in green, moving in magenta. Grey means the two agree.\"\"\"
+    aligned = sitk.Resample(moving, fixed, transform, sitk.sitkLinear, -1000.0)
+    z = sitk.GetArrayFromImage(fixed).shape[0] // 2
+    f = sitk.GetArrayFromImage(fixed)[z]
+    m = sitk.GetArrayFromImage(aligned)[z]
+
+    # Crop away the -1000 HU padding so the body fills the frame.
+    rows = np.where(np.any(f > -500, axis=1))[0]
+    cols = np.where(np.any(f > -500, axis=0))[0]
+    box = (slice(rows[0], rows[-1]), slice(cols[0], cols[-1]))
+
+    def scale(a):
+        return np.clip((a[box] + 160) / 400, 0, 1)
+
+    ax.imshow(np.dstack([scale(m), scale(f), scale(m)]))
+    ax.set_title(title, fontsize=10)
+    ax.axis("off")
+
+
+unregistered = sitk.Euler3DTransform()
+unregistered.SetCenter(truth.GetCenter())
+
+fig, axes = plt.subplots(1, 3, figsize=(13, 4.6))
+overlay(axes[0], unregistered, f"before — TRE {baseline:.1f} mm")
+overlay(axes[1], transform, f"guidebook defaults — TRE {tre(transform):.1f} mm")
+overlay(axes[2], centered, f"rotation center fixed — TRE {tre(centered):.1f} mm")
+plt.tight_layout()
+plt.show()
+"""),
+
+("md", """\
+The middle panel is the one worth studying, and the point is that it is indistinguishable from the
+left one. That run exited cleanly, wrote a transform file, and reported plausible-looking
+parameters — while leaving the image exactly where it found it. Nothing in its output said so.
+
+That is what "fails quietly" means. The failure is legible here only because the panel beside it
+shows what moving the image looks like.
+
+Note also that the right panel is *better*, not *right*: at 4.70 mm the ribs and the skin surface
+still carry fringing. The table below puts all four attempts side by side, and the one that actually
+solves it is not on this figure.
 """),
 ("code", """\
 summary = [
