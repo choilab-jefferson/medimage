@@ -43,12 +43,19 @@ subprocess.run([sys.executable, "-m", "pip", "install", "-q", "qradiomics"], che
 """),
 ("code", """\
 import pathlib
+import shutil
 
 import pydicom
 
 import medimage_data as md
 
+# Start from an empty directory. This chapter writes a file with invented identifiers,
+# anonymizes it, and reads the mapping back. Leftovers from an earlier run would get
+# anonymized a second time, and the pseudonyms below would chain off each other instead
+# of off the original identifier.
 WORK = pathlib.Path("work/privacy")
+if WORK.exists():
+    shutil.rmtree(WORK)
 (WORK / "original").mkdir(parents=True, exist_ok=True)
 """),
 
@@ -204,6 +211,33 @@ print("data belongs — never alongside the de-identified copy you share.")
 """),
 
 ("md", """\
+One row, one direction — but only because the salt is fixed and the mapping was kept. `qr phi tokens`
+reads that store from either end.
+"""),
+("code", """\
+token = mapping.anon_pid.iloc[0]
+
+forward = subprocess.run(["qr", "phi", "tokens", "lookup", str(mapping.original_pid.iloc[0]),
+                          "--mapping", str(WORK / "pid_map.csv")],
+                         capture_output=True, text=True, check=True)
+reverse = subprocess.run(["qr", "phi", "tokens", "lookup", str(token),
+                          "--mapping", str(WORK / "pid_map.csv"), "--by", "token"],
+                         capture_output=True, text=True, check=True)
+
+print(f"the pseudonym that gets shared:      {token}")
+print(f"looked up from the original ID:      {forward.stdout.strip()}")
+print(f"looked up backwards from the token:  {reverse.stdout.strip()}")
+"""),
+
+("md", """\
+The last line is the point of the chapter's fourth objective. The pseudonym in the shared files is
+not anonymous — it is *reversible by whoever holds this file*. That is a feature: it is how you
+answer a query about a specific patient two years later, and how you withdraw someone who revokes
+consent. It is also why the mapping never travels with the data it unlocks.
+
+Delete the mapping and you have anonymized rather than pseudonymized: nobody can re-identify the
+patients, including you, including when you need to.
+
 ## 4. Verifying, not assuming
 
 An anonymizer that silently missed a tag looks exactly like one that worked. Chapter 3 introduced

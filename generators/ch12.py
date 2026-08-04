@@ -256,6 +256,98 @@ reporting exactly as it is.
 It is also, unavoidably, a much less exciting sentence than the one available ten minutes earlier.
 That asymmetry is the reason leaks survive to publication: the result that is wrong is the one that
 looks like a finding.
+"""),
+
+("md", """\
+## 7. Why not just hold out a test set?
+
+Cross-validation reuses every patient: each is a test case in exactly one fold and a training case in
+the others. The alternative most people reach for first is simpler — set some patients aside, never
+look at them, and report what the model scores on them at the end. It is what a large study does and
+what a regulator expects to see.
+
+Here it does not work. It is worth watching that happen rather than being told.
+
+`qr ml train` fits a model with its own internal cross-validation and writes it to disk. `qr ml
+evaluate` loads that saved model, applies it to patients it has never seen, and reports hold-out
+metrics. Below, the same 59 patients are split six times; the only thing that differs between the
+splits is the random seed.
+"""),
+("code", """\
+from sklearn.model_selection import train_test_split
+
+clean_table = pd.read_csv(WORK / "classify_clean.csv")
+holdout_dir = WORK / "holdout"
+holdout_dir.mkdir(exist_ok=True)
+
+rows = []
+for seed in range(6):
+    train, test = train_test_split(clean_table, test_size=0.3, random_state=seed,
+                                   stratify=clean_table.dead_2y)
+    train_csv, test_csv = holdout_dir / f"train{seed}.csv", holdout_dir / f"test{seed}.csv"
+    train.to_csv(train_csv, index=False)
+    test.to_csv(test_csv, index=False)
+
+    model = holdout_dir / f"model{seed}.pkl"
+    cv_metrics = holdout_dir / f"cv{seed}.json"
+    report = holdout_dir / f"holdout{seed}.json"
+
+    subprocess.run(["qr", "ml", "train", "-i", str(train_csv), "--task", "classify",
+                    "--outcome", "dead_2y", "--model", str(model),
+                    "--metrics", str(cv_metrics), "--top-features", "20"],
+                   check=True, capture_output=True)
+    subprocess.run(["qr", "ml", "evaluate", "-i", str(test_csv), "--model", str(model),
+                    "--task", "classify", "--outcome", "dead_2y", "--report", str(report)],
+                   check=True, capture_output=True)
+
+    rows.append({"seed": seed,
+                 "cv_auc": json.loads(cv_metrics.read_text())["cv_auc_mean"],
+                 "holdout_auc": json.loads(report.read_text())["auc"]})
+
+splits = pd.DataFrame(rows)
+print(f"{len(train)} training / {len(test)} hold-out patients in every split")
+print(f"{int(clean_table.dead_2y.sum())} of {len(clean_table)} patients dead at two years")
+print()
+print(splits.round(3).to_string(index=False))
+"""),
+("code", """\
+fig, ax = plt.subplots(figsize=(8, 4))
+ax.plot(splits.seed, splits.cv_auc, "o-", color="tab:blue",
+        label="cross-validated, on the training patients")
+ax.plot(splits.seed, splits.holdout_auc, "s-", color="tab:red",
+        label="hold-out, on the unseen patients")
+ax.axhline(0.5, color="black", linestyle="--", linewidth=1)
+ax.text(0.05, 0.51, "chance", fontsize=8)
+ax.set_xlabel("random seed — the only thing that differs between these six runs")
+ax.set_ylabel("AUC")
+ax.set_ylim(0.3, 0.9)
+ax.set_title("The same 59 patients, split six ways")
+ax.legend(fontsize=8, loc="upper right")
+plt.tight_layout()
+plt.show()
+"""),
+
+("md", """\
+The hold-out AUC swings from roughly chance to roughly 0.74 across the six runs. Same patients, same
+features, same pipeline — only the assignment of patients to the two sides changed.
+
+Eighteen patients is the whole problem. With 43 of 59 dead at two years, a hold-out set of that size
+holds about thirteen events and five survivors, and one patient crossing the decision boundary moves
+the AUC by several points. Whichever seed you happened to run is the number you would report.
+
+Notice too that the two curves do not track each other. The run with the worst cross-validated score
+has one of the best hold-out scores; another has nearly the reverse. Neither estimate is stable
+enough to corroborate the other, so seeing them agree would not have meant much either.
+
+None of this is an argument against holding out a test set. It is an argument about **n**. At five
+hundred patients, a held-out hundred and fifty gives an interval narrow enough to quote, and it
+protects against exactly the kind of mistake section 5 uncovered. At fifty-nine, cross-validation
+over everyone is the most the data will support, and section 3 already showed how wide even that is.
+
+So the honest report for this cohort is the cross-validated number, its spread, and a sentence saying
+the cohort is too small to hold anything out. The third command in this family, `qr ml predict`,
+applies a saved model to a feature table that has no labels at all — which is what you would reach
+for once a model is finished and real patients start arriving.
 
 ## Exercises
 
@@ -265,8 +357,9 @@ looks like a finding.
    much noise is needed before the AUC stops being suspicious.
 3. Run the squamous benchmark with three different `--seed` values. How much does the winning model
    change? What does that say about reporting the best of eight?
-4. Split the cohort by patient ID into two halves, fit on one and test on the other, and compare
-   with the cross-validated number. Which would you put in a paper?
+4. Raise `--top-features` from 20 to 100 in the hold-out loop. Does the spread across seeds narrow
+   or widen? Why would giving the model more features to choose from make a small test set less
+   stable rather than more?
 
 ## References
 
