@@ -99,6 +99,14 @@ TotalSegmentator reads NIfTI rather than a folder of DICOM files, so the series 
 SimpleITK handles both the reading and the geometry, and from here on we work in its array
 convention so that the image and the segmentation always share indices — mixing two conventions is
 an easy way to measure the wrong slice.
+
+There is one more thing to settle before any of it is drawn. Chapter 1 showed that a DICOM series
+does not promise which way its rows run, and this one runs back-to-front: taken as stored, the
+patient comes out upside down. `sitk.DICOMOrient` rewrites a volume into a named orientation —
+`LPI` here, which turns the rows over and leaves the slice order alone — so every volume below,
+the scan and each mask alike, is read through the same helper. Orienting them together is what
+keeps their indices aligned; orienting only the image would silently break the correspondence
+this section just promised.
 """),
 ("code", """\
 ct_dir = md.fetch_pancreas_ct(0)
@@ -109,7 +117,12 @@ if not nifti.exists():
     reader.SetFileNames(reader.GetGDCMSeriesFileNames(str(ct_dir)))
     sitk.WriteImage(reader.Execute(), str(nifti))
 
-image = sitk.ReadImage(str(nifti))
+def read_oriented(path):
+    \"\"\"Read a volume and force it into LPI, so rows run front to back.\"\"\"
+    return sitk.DICOMOrient(sitk.ReadImage(str(path)), "LPI")
+
+
+image = read_oriented(nifti)
 ct = sitk.GetArrayFromImage(image).astype(np.float32)      # (slice, row, column), in HU
 sx, sy, sz = image.GetSpacing()
 
@@ -136,7 +149,7 @@ if not (seg_dir / "vertebrae_L3.nii.gz").exists():
                       "vertebrae_L4", "vertebrae_L5"])
 
 def slice_profile(path):
-    arr = sitk.GetArrayFromImage(sitk.ReadImage(str(path)))
+    arr = sitk.GetArrayFromImage(read_oriented(path))
     return arr.reshape(arr.shape[0], -1).sum(axis=1)
 
 
@@ -259,7 +272,7 @@ if not total_seg.exists():
     run_segmentation([totalsegmentator_binary(), "-i", str(nifti),
                       "-o", str(total_seg), "--ml"])
 
-structures = sitk.GetArrayFromImage(sitk.ReadImage(str(total_seg)))
+structures = sitk.GetArrayFromImage(read_oriented(total_seg))
 
 # TotalSegmentator label numbers for the abdominal contents.
 CAVITY_ORGANS = [1, 2, 3, 5, 6, 7, 18, 20, 52, 53]   # spleen, kidneys, liver, stomach,
