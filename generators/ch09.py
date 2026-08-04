@@ -39,6 +39,7 @@ import sys
 # an error that looks nothing like its cause.
 subprocess.run([sys.executable, "-m", "pip", "install", "-q",
                 "qradiomics", "rt-utils", "opencv-python-headless"], check=True)
+print("installed")
 """),
 ("code", """\
 import pathlib
