@@ -292,13 +292,15 @@ for seed in range(6):
     cv_metrics = holdout_dir / f"cv{seed}.json"
     report = holdout_dir / f"holdout{seed}.json"
 
+    # Keep the model-training RNG fixed so the only changing factor is the train/test split.
     subprocess.run(["qr", "ml", "train", "-i", str(train_csv), "--task", "classify",
                     "--outcome", "dead_2y", "--model", str(model),
-                    "--metrics", str(cv_metrics), "--top-features", "20"],
-                   check=True, capture_output=True)
+                    "--metrics", str(cv_metrics), "--top-features", "20",
+                    "--seed", "0"],
+                   check=True, capture_output=True, text=True)
     subprocess.run(["qr", "ml", "evaluate", "-i", str(test_csv), "--model", str(model),
                     "--task", "classify", "--outcome", "dead_2y", "--report", str(report)],
-                   check=True, capture_output=True)
+                   check=True, capture_output=True, text=True)
 
     rows.append({"seed": seed,
                  "cv_auc": json.loads(cv_metrics.read_text())["cv_auc_mean"],
