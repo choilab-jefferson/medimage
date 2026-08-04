@@ -24,7 +24,7 @@ medical imaging.
 | [9. Radiomics features](Chapter09_Radiomics_Features.ipynb) | The three feature families, patterns, and what preprocessing does to each | Knowing which of your 1130 numbers survive someone else running the pipeline |
 | [10. Registration](Chapter10_Registration.ipynb) | Two engines, scoring in millimeters, diagnosing a registration that fails silently | Aligning scans is where pipelines break without saying so |
 | [11. Delta radiomics](Chapter11_Delta_Radiomics.ipynb) | Measuring change between timepoints, and measuring your own noise floor | Change is more informative than any single value — once you know what change means nothing |
-| [12. Classification](Chapter12_Classification.ipynb) | Benchmarking eight models, and a real data leak that produced AUC 1.000 | An implausibly good result is a bug report, not a finding |
+| [12. Classification](Chapter12_Classification.ipynb) | Benchmarking eight models, a real data leak that produced AUC 1.000, and what a hold-out set can and cannot tell you at this size | An implausibly good result is a bug report, not a finding |
 | [13. Reproducing published results](Chapter13_Reproducibility.ipynb) | The full `qr` analysis on Lung1, compared against the paper | Whether a pipeline reproduces is the question that matters |
 
 ### What the course is actually about
@@ -64,6 +64,25 @@ cd medimage
 pip install -r requirements.txt
 jupyter lab
 ```
+
+## How the notebooks are built
+
+The `.ipynb` files are generated, not hand-edited. Each chapter's prose and code live in
+`generators/chNN.py` as plain Python strings, and `chNN.py` writes `ChapterNN_*.ipynb` — the
+numbering matches one to one.
+
+```bash
+python generators/ch09.py     # rewrites Chapter09_Radiomics_Features.ipynb
+```
+
+Keeping the source as text is what makes a change like renumbering the chapters or rewording a
+cross-reference an ordinary edit rather than surgery on notebook JSON.
+
+One thing to know before running it: `build()` emits cells with **empty outputs**, while the
+committed notebooks are executed and carry their figures. Regenerating therefore strips those
+figures unless you re-execute afterwards. For a small prose fix it is cheaper to edit the markdown
+cell in the `.ipynb` and make the identical edit in `chNN.py`, which keeps the two in step without
+losing the outputs. See [generators/README.md](generators/README.md).
 
 ## Data policy
 
@@ -110,6 +129,12 @@ quiet source of error:
   scanner happened to store the rows.
 - It orders slices head first and derives slice spacing from the actual slice positions rather than
   trusting `SliceThickness`.
+
+Chapter 6 is the one chapter that cannot use it: TotalSegmentator reads NIfTI, and its masks have to
+stay on the same indices as the image, so the chapter goes through SimpleITK instead. It reaches the
+same convention with `sitk.DICOMOrient(..., "LPI")`, applied to the scan **and every mask** through a
+single helper. Orienting the image alone would leave the masks on the old axes — and the failure
+would be silent, since the areas come out identical either way.
 
 ## Tools used in the later chapters
 
@@ -176,6 +201,17 @@ heart against the liver as reference. The liver reads SUV 2.27, right on the exp
 is what validates the conversion before anything is interpreted. Framed by Choi et al.,
 *Novel Functional Radiomics for Prediction of Cardiac PET Avidity in Lung Cancer Radiotherapy*,
 JCO Clinical Cancer Informatics 2024 ([PMID 38452302](https://pubmed.ncbi.nlm.nih.gov/38452302/)).
+
+**Chapter 12 — classification, and a result that was too good.** Benchmarks eight models on two
+labels. Histology comes back at chance, which is the honest answer. Two-year mortality comes back at
+**AUC 1.000** with zero variance across folds — and the chapter treats that as a bug report rather
+than a finding. The leak is that the label was derived from `OS_months` and `OS_event`, both still
+sitting in the feature table; dropping two columns takes the best model from 1.000 to about 0.65.
+It closes by asking why not simply hold out a test set instead. Splitting the same 59 patients six
+ways, changing nothing but the seed, gives hold-out AUCs from 0.48 to 0.74 — and they do not track
+the cross-validated score computed on the other side of the same split. The argument is about **n**,
+not against hold-out testing: eighteen test patients, thirteen of them events, cannot measure
+anything.
 
 **Chapter 13 — reproducing published results.** Runs the full `qr` pipeline on a subset of the Lung1
 cohort — download, contour conversion, feature extraction, clinical merge, cross-validated Cox — and
