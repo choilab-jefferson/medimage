@@ -89,7 +89,9 @@ def run_segmentation(args):
     subprocess.run(args, check=True, env=env)
 
 
-print("using:", totalsegmentator_binary())
+# Show the path without the home directory, so the output does not carry
+# the username of whoever executed the notebook.
+print("using:", str(totalsegmentator_binary()).replace(str(pathlib.Path.home()), "~"))
 """),
 
 ("md", """\

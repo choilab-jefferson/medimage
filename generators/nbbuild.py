@@ -63,7 +63,7 @@ else:
     os.chdir(root)
 
 print("Running on Colab:", IN_COLAB)
-print("Working directory:", os.getcwd())
+print("Working directory:", pathlib.Path.cwd().name)
 '''
 
 UNPACK = '''\
