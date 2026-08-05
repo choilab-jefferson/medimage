@@ -158,7 +158,7 @@ qr tcia download  →  qr convert  →  qr preprocess  →  qr extract  →  qr 
 | `qr results merge` | Join features with a clinical table into an analysis-ready CSV |
 | `qr analyze` | Univariate Cox survival, classification, feature importance |
 | `qr ml` | Multi-model training, benchmarking, evaluation and prediction (see Chapter 12) |
-| `qr anonymize` / `qr phi` | Strip and audit PHI (see Chapter 5) |
+| `qr anonymize` | Strip PHI under a named profile (see Chapter 5) |
 
 ### TotalSegmentator
 
@@ -231,7 +231,7 @@ the software version and the modeling choices.
 **Chapter 5 — patient privacy.** Every scan in this course arrived already de-identified. Real data
 does not. The chapter plants invented identifiers in a DICOM header, removes them under the HIPAA
 Safe Harbor profile, and then *verifies* the removal with an audit that exits non-zero on any
-finding — 24 findings before, clean after. It also shows why dates are shifted rather than deleted:
+finding — 20 findings before, none after. It also shows why dates are shifted rather than deleted:
 birth date and study date both move by the same 19 days, so age at scan is preserved exactly while
 the link to the real calendar is broken. Closes on what header cleaning cannot catch — burned-in
 pixel text, private tags, and faces reconstructable from head CT.

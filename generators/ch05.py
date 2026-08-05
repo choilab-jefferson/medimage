@@ -212,22 +212,18 @@ print("data belongs — never alongside the de-identified copy you share.")
 """),
 
 ("md", """\
-One row, one direction — but only because the salt is fixed and the mapping was kept. `qr phi tokens`
-reads that store from either end.
+One row, one direction — but the table reads just as well from the other end.
 """),
 ("code", """\
 token = mapping.anon_pid.iloc[0]
+original = mapping.original_pid.iloc[0]
 
-forward = subprocess.run(["qr", "phi", "tokens", "lookup", str(mapping.original_pid.iloc[0]),
-                          "--mapping", str(WORK / "pid_map.csv")],
-                         capture_output=True, text=True, check=True)
-reverse = subprocess.run(["qr", "phi", "tokens", "lookup", str(token),
-                          "--mapping", str(WORK / "pid_map.csv"), "--by", "token"],
-                         capture_output=True, text=True, check=True)
+forward = mapping.loc[mapping.original_pid == original, "anon_pid"].iloc[0]
+reverse = mapping.loc[mapping.anon_pid == token, "original_pid"].iloc[0]
 
 print(f"the pseudonym that gets shared:      {token}")
-print(f"looked up from the original ID:      {forward.stdout.strip()}")
-print(f"looked up backwards from the token:  {reverse.stdout.strip()}")
+print(f"looked up from the original ID:      {forward}")
+print(f"looked up backwards from the token:  {reverse}")
 """),
 
 ("md", """\
@@ -244,28 +240,75 @@ patients, including you, including when you need to.
 An anonymizer that silently missed a tag looks exactly like one that worked. Chapter 3 introduced
 Dice for the same reason: the output of a process is not evidence that the process was correct.
 
-`qr phi audit` re-reads the files and searches for anything that still looks identifying — unblanked
-name fields, values shaped like medical record numbers, identifiers embedded in file names. It exits
-non-zero on any finding, which makes it usable as a gate in a script rather than something a human
-has to remember to eyeball.
+So write the check. It is short enough to read, and reading it is the point — an audit you cannot
+inspect is another thing you are trusting.
+
+It asks two questions of every element in every file. **Is a field that must be empty non-empty?**
+That is a fixed list of tags: names, addresses, telephone numbers, institution, physicians, accession
+and admission identifiers. **Does any value still look like an identifier?** — a `SURNAME^FORENAME`
+token, a run of eight or more digits, an email address, a phone number.
+
+The second question is only asked of free-text fields. Dates and UIDs are structural, and a shifted
+`PatientBirthDate` of `19551122` is eight digits that mean nothing to anybody — scanning it would
+report a finding that is not one.
 """),
 ("code", """\
+import re
+
+MUST_BE_BLANK = ("PatientName", "PatientAddress", "PatientTelephone",
+                 "InstitutionName", "InstitutionAddress",
+                 "ReferringPhysician", "PerformingPhysician", "RequestingPhysician",
+                 "OperatorsName", "StationName", "DeviceSerialNumber",
+                 "AccessionNumber", "AdmissionID", "IssuerOfPatientID")
+
+LOOKS_IDENTIFYING = {
+    "a name": re.compile(r"\\b[A-Z]{2,}\\^[A-Z]{2,}\\b"),
+    "a record number": re.compile(r"\\b\\d{8,}\\b"),
+    "an email address": re.compile(r"\\b[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}\\b"),
+    "a phone number": re.compile(r"\\b(?:\\(\\d{3}\\)\\s*|\\d{3}[-.\\s])\\d{3}[-.\\s]\\d{4}\\b"),
+}
+
+# Narrative fields only. DA (date), TM (time), UI (uid) and the numeric VRs hold
+# structural values, and the patterns above would fire on them spuriously.
+FREE_TEXT = {"LO", "SH", "LT", "ST", "UT", "PN", "AE"}
+
+
+def audit(folder):
+    \"\"\"Re-read every file and report anything that still looks identifying.\"\"\"
+    findings = []
+    for path in sorted(pathlib.Path(folder).glob("*.dcm")):
+        ds = pydicom.dcmread(path, stop_before_pixels=True)
+        for element in ds:
+            keyword, value = element.keyword, str(element.value or "")
+            if not keyword or not value:
+                continue
+            if keyword.startswith(MUST_BE_BLANK):
+                findings.append((path.name, f"{keyword} not blanked: {value!r}"))
+            elif keyword != "PatientID" and element.VR in FREE_TEXT:
+                # PatientID is expected to hold a pseudonym rather than nothing.
+                for description, pattern in LOOKS_IDENTIFYING.items():
+                    found = pattern.search(value)
+                    if found:
+                        findings.append(
+                            (path.name, f"{keyword} looks like {description}: {found.group(0)!r}"))
+                        break
+    return findings
+
+
 for label, folder in [("BEFORE anonymization", WORK / "original"),
                       ("AFTER anonymization", WORK / "clean")]:
-    audit = subprocess.run(["qr", "phi", "audit", str(folder), "--limit", "6"],
-                           capture_output=True, text=True)
-    # The audit reports absolute paths; show them relative to the repository so the
-    # output does not depend on where the checkout happens to live.
-    root = str(pathlib.Path.cwd()) + "/"
-    findings = [line.replace(root, "") for line in audit.stdout.splitlines() if line.strip()]
-    print(f"=== {label} — exit code {audit.returncode} ===")
-    for line in findings[:5]:
-        print("   ", line.split("::")[-1].strip()[:100] if "::" in line else line[:100])
+    findings = audit(folder)
+    print(f"=== {label} — {len(findings)} finding(s) ===")
+    for name, detail in findings[:5]:
+        print(f"    {name}  {detail[:78]}")
+    if len(findings) > 5:
+        print(f"    ... and {len(findings) - 5} more")
     print()
 """),
 
 ("md", """\
-Non-zero before, zero after. That is the check worth building into any export step.
+Findings before, none after. Wrapped in an `assert` or a non-zero exit, that becomes a gate in an
+export script rather than something a human has to remember to eyeball.
 
 ### What an audit like this cannot catch
 
@@ -291,7 +334,7 @@ Putting it together, the sequence for real data is:
 1. Copy from the source — **never anonymize in place**, because a bug in the middle leaves you with
    neither the original nor a clean copy.
 2. `qr anonymize --profile safe-harbor --replace-pid --pid-salt <study specific>`
-3. `qr phi audit` on the output, and stop if it is non-zero.
+3. Audit the output, and stop if anything is found.
 4. Store the mapping file with the identifiable data, not with the shared copy.
 5. Only then start Chapter 1.
 
