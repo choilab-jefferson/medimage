@@ -10,7 +10,11 @@ torch>=2.4
 
 # Chapters 5-6
 SimpleITK>=2.4
-qradiomics>=1.0
+qradiomics>=0.9.5
+# The default extraction engine. It is an optional extra of qradiomics rather
+# than a dependency, because PyPI has no pyradiomics wheel for Python 3.10+ and
+# its 3.1.0 sdist has broken metadata. Installing from upstream git works.
+pyradiomics @ git+https://github.com/AIM-Harvard/pyradiomics.git
 lifelines>=0.30
 remotezip>=0.12
 
