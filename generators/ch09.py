@@ -37,7 +37,10 @@ import sys
 # OpenCV build needs a graphics library that servers and containers lack, so
 # without the headless build every contour conversion dies on libGL.so.1 —
 # an error that looks nothing like its cause.
+# pyradiomics is the default extraction engine, and an optional extra of
+# qradiomics: PyPI ships no wheel for Python 3.10+, so it comes from git.
 subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                "pyradiomics @ git+https://github.com/AIM-Harvard/pyradiomics.git",
                 "qradiomics", "rt-utils", "opencv-python-headless"], check=True)
 print("installed")
 """),

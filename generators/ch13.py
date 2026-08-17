@@ -48,7 +48,10 @@ containers do not have. Without the headless build every contour conversion fail
 import subprocess
 import sys
 
+# pyradiomics is the default extraction engine, and an optional extra of
+# qradiomics: PyPI ships no wheel for Python 3.10+, so it comes from git.
 subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                "pyradiomics @ git+https://github.com/AIM-Harvard/pyradiomics.git",
                 "qradiomics", "rt-utils", "opencv-python-headless"], check=True)
 
 print(subprocess.run(["qr", "info"], capture_output=True, text=True).stdout.strip())

@@ -35,8 +35,11 @@ By the end you will be able to:
 import subprocess
 import sys
 
-subprocess.run([sys.executable, "-m", "pip", "install", "-q", "qradiomics", "SimpleITK"],
-               check=True)
+# pyradiomics is the default extraction engine, and an optional extra of
+# qradiomics: PyPI ships no wheel for Python 3.10+, so it comes from git.
+subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                "pyradiomics @ git+https://github.com/AIM-Harvard/pyradiomics.git",
+                "qradiomics", "SimpleITK"], check=True)
 print("installed")
 """),
 ("code", """\

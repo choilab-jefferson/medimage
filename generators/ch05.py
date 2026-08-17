@@ -122,31 +122,28 @@ fields that make an image measurable are almost entirely different sets.
 ("md", """\
 ## 3. Removing it
 
-`qr anonymize` applies a named policy rather than a hand-written list of tags. Three are available:
+`qr anonymize` applies a policy rather than a hand-written list of tags: it clears the fields that
+identify a person and leaves the ones that make the image measurable.
 
-| Profile | What it does |
-|---|---|
-| `basic` | Clears the obvious identifiers |
-| `safe-harbor` | Follows the HIPAA Safe Harbor list — the strict option |
-| `tcia` | Matches what public archives apply before publishing |
-
-Two flags matter beyond the profile. `--replace-pid` swaps the patient identifier for a pseudonym
-rather than blanking it, so the slices of one patient still group together. `--pid-salt` seeds that
-pseudonym, so the same patient gets the same code across separate runs of the same study — and a
-*different* code in a different study, which stops two datasets from being cross-linked.
+Two flags matter. `--replace-pid` swaps the patient identifier for a pseudonym rather than blanking
+it, so the slices of one patient still group together. `--pid-salt` seeds that pseudonym, so the same
+patient gets the same code across separate runs of the same study — and a *different* code in a
+different study, which stops two datasets from being cross-linked. `--mapping` writes the
+original-to-pseudonym table to a file of your choosing.
 """),
 ("code", """\
 result = subprocess.run([
     "qr", "anonymize",
     "-i", str(WORK / "original"),
     "-o", str(WORK / "clean"),
-    "--profile", "safe-harbor",
     "--replace-pid",
     "--pid-salt", "CourseDemo2026",
     "--mapping", str(WORK / "pid_map.csv"),
 ], capture_output=True, text=True)
 
-print(result.stdout.strip()[-400:])
+# The tool reports absolute paths; show them relative to the repository so the
+# output does not depend on where the checkout lives.
+print(result.stdout.strip()[-400:].replace(str(pathlib.Path.cwd()) + "/", ""))
 """),
 ("code", """\
 before = pydicom.dcmread(WORK / "original" / "slice000.dcm")
@@ -168,20 +165,55 @@ the cohort into one anonymous blob, and no per-patient analysis would be possibl
 a salted hash, so it cannot be reversed without the salt, and the original-to-pseudonym mapping is
 written to a separate file that stays behind wherever the identifiable data stays.
 
-**The dates moved rather than vanished.** Compare them.
+**The dates were not treated the same way.** Look at the two of them in the table above: the birth
+date is blank, and the study date came through untouched.
+
+That is worth stopping on, because it is the chapter's thesis applied to the tool itself. A
+de-identifier's default policy is a policy, not a guarantee, and this one does not do what a
+longitudinal study needs.
+
+Deleting a date outright feels safer and quietly destroys the data. Chapter 8 compares two PET scans
+months apart; the survival analysis in Chapter 13 depends entirely on elapsed time. Both need
+*intervals*, and a blank birth date means no age at scan. Meanwhile a surviving study date is a real
+identifier: combined with a rare diagnosis and a hospital, it narrows the field fast.
+
+What you want instead is to move every date in a patient's record by the same offset. Intervals
+survive; the link to the real calendar does not. The offset must be **per patient** — one shared
+offset across the cohort would leave the relative timing of patients intact, and anyone who knows a
+single real date could undo it.
+
+The tool does not do that here, so do it explicitly.
 """),
 ("code", """\
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
+
+DATE_TAGS = ["PatientBirthDate", "StudyDate", "SeriesDate", "AcquisitionDate", "ContentDate"]
 
 
 def parse(value):
     return datetime.strptime(value, "%Y%m%d")
 
 
+# Seeded on the original identifier so one patient gets one offset, stable across
+# runs. A real study would draw this once, store it with the mapping file, and
+# never regenerate it from the identifier.
+offset = timedelta(days=random.Random(before.PatientID).randint(-365, 365))
+
+for path in sorted((WORK / "clean").glob("*.dcm")):
+    source = pydicom.dcmread(WORK / "original" / path.name)
+    shifted = pydicom.dcmread(path)
+    for tag in DATE_TAGS:
+        value = getattr(source, tag, "")
+        if value:
+            setattr(shifted, tag, (parse(value) + offset).strftime("%Y%m%d"))
+    shifted.save_as(path, enforce_file_format=True)
+
+after = pydicom.dcmread(WORK / "clean" / "slice000.dcm")
+
 for tag in ["PatientBirthDate", "StudyDate"]:
     b, a = getattr(before, tag), getattr(after, tag)
-    shift = (parse(a) - parse(b)).days
-    print(f"{tag:20s} {b} -> {a}   shifted by {shift:+d} days")
+    print(f"{tag:20s} {b} -> {a}   shifted by {(parse(a) - parse(b)).days:+d} days")
 
 print()
 print("Both dates moved by the same amount, so every interval is preserved:")
@@ -192,14 +224,12 @@ print(f"  age at scan, after  shifting: {a_gap / 365.25:.2f} years")
 """),
 
 ("md", """\
-This is the detail people get wrong most often. Deleting dates outright feels safer and quietly
-destroys the data: Chapter 8 compares two PET scans months apart, and the survival analysis in
-Chapter 13 depends entirely on elapsed time. Both need intervals.
+Same interval, different calendar. That is the property the analysis needs and the one the
+identifier loses.
 
-Shifting every date in a patient's record by the same random offset keeps every interval intact
-while breaking the link to the real calendar. Note that the offset must be **per patient** — one
-shared offset across the cohort would leave the relative timing of patients intact and could be
-undone by anyone who knows one real date.
+It is also a reminder that "we ran the anonymizer" is not a description of what happened to your
+data. Somebody has to read the output and decide whether the policy it applied is the policy the
+study requires.
 """),
 ("code", """\
 import pandas as pd
@@ -333,15 +363,15 @@ Putting it together, the sequence for real data is:
 
 1. Copy from the source — **never anonymize in place**, because a bug in the middle leaves you with
    neither the original nor a clean copy.
-2. `qr anonymize --profile safe-harbor --replace-pid --pid-salt <study specific>`
+2. `qr anonymize --replace-pid --pid-salt <study specific> --mapping <kept separately>`
 3. Audit the output, and stop if anything is found.
 4. Store the mapping file with the identifiable data, not with the shared copy.
 5. Only then start Chapter 1.
 
 ## Exercises
 
-1. Run the anonymizer with `--profile basic` instead of `safe-harbor` and audit the result. Which
-   fields survive, and can you construct a case where one of them identifies someone?
+1. Add a tag to `FAKE_PHI` that the anonymizer does not clear — `PatientComments` is a good one —
+   and audit the result. Does the audit catch it? If not, what would you add to the checks?
 2. Change `--pid-salt` and re-run. Does the same patient get the same pseudonym? Why does that
    matter for combining two datasets — and why is it also a risk?
 3. `StudyInstanceUID` is not a name, but it is unique to one study. Check whether it changed. Should
