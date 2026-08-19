@@ -65,6 +65,48 @@ pip install -r requirements.txt
 jupyter lab
 ```
 
+### How long each chapter takes
+
+Measured on a CPU-only machine. **First run** is with the derived artifacts cleared but the images
+already downloaded; **re-run** is with everything cached, which is what you get the second time.
+
+| Chapter | Downloads | First run | Re-run |
+|---|---|---|---|
+| 1. Exploration | 40 MB | 24 s | 24 s |
+| 2. Masks and filters | cached from Ch 1 | 24 s | 24 s |
+| 3. Measurement | + 9 MB | 51 s | 51 s |
+| 4. Image comparison | + 6 subjects | 58 s | 58 s |
+| 5. Patient privacy | cached from Ch 1 | 20 s | 20 s |
+| 6. Body composition from CT | + model weights | **20 min** | 17 s |
+| 7. Fat quantification with MR | + 4 subjects | 15 s | 15 s |
+| 8. PET/CT | ~500 MB | **8 min** | 38 s |
+| 9. Radiomics features | 1.5 GB | **8 min** † | 33 s |
+| 10. Registration | cached from Ch 8 | 94 s | 94 s |
+| 11. Delta radiomics | ~500 MB | **50 min** | 40 s |
+| 12. Classification | cached from Ch 9 | **15 min** † | 8 min |
+| 13. Reproducing published results | cached from Ch 9 | **9 min** | 2 min |
+
+† Derived, not timed directly: the chapter's own re-run time plus the shared Lung1 build below.
+Chapter 13's 9 minutes is the one that was measured end to end.
+
+Chapters 6, 8 and 11 cost what they cost because they run a neural network — TotalSegmentator, on
+the CPU, twice in Chapter 6, once in Chapter 8, and twelve times in Chapter 11. A GPU runtime cuts
+this sharply, and Colab offers one under *Runtime → Change runtime type*.
+
+Chapters 9, 12 and 13 share one prepared Lung1 cohort. Building it — converting contours,
+resampling, and extracting 1130 features for 60 patients — takes about **7 minutes** and is charged
+to whichever of the three you run first; the other two then start immediately. Chapter 12 stays at
+8 minutes even on a re-run, because its work is model benchmarking rather than extraction, and that
+is not cached.
+
+That build is reproducible: rebuilding it from the same images reproduced 98% of the 66,670 feature
+values exactly, and the rest to within 2×10⁻¹² relative — CSV rounding. That is what pinning the
+pyradiomics commit buys.
+
+Two things these numbers exclude. **Download time is not measured** — the volumes are listed, but
+how long they take depends on your connection and on TCIA. And on Colab the setup cell installs
+packages on every fresh session, which adds a few minutes before any of the above begins.
+
 ## How the notebooks are built
 
 The `.ipynb` files are generated, not hand-edited. Each chapter's prose and code live in
