@@ -8,17 +8,19 @@ pandas>=2.2
 scikit-image>=0.24
 torch>=2.4
 
-# Chapters 5-6
+# Segmentation, extraction and survival (Chapters 5-13)
 SimpleITK>=2.4
 qradiomics>=0.9.5
 # The default extraction engine. It is an optional extra of qradiomics rather
 # than a dependency, because PyPI has no pyradiomics wheel for Python 3.10+ and
 # its 3.1.0 sdist has broken metadata. Installing from upstream git works.
-pyradiomics @ git+https://github.com/AIM-Harvard/pyradiomics.git
+# Pinned to the same commit the notebooks install: master moves, and the
+# feature values move with it.
+pyradiomics @ git+https://github.com/AIM-Harvard/pyradiomics.git@8ed579383b44806651c463d5e691f3b2b57522ab
 lifelines>=0.30
 remotezip>=0.12
 
-# Chapters 10-13 (feature extraction, registration, delta, classification)
+# Modelling and contour conversion (Chapters 9, 12, 13)
 statsmodels>=0.14
 scikit-learn>=1.5
 lightgbm>=4.5
