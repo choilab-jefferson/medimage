@@ -177,7 +177,7 @@ print(mortality_results[["model", "oof_auc", "oof_ap", "cv_auc_mean", "cv_auc_st
 ("md", """\
 ### Stop.
 
-Three models at **AUC 1.000** and two more within a few thousandths of it, with a standard
+Four models at **AUC 1.000** and a fifth within a few thousandths of it, with a standard
 deviation of zero across folds. Near-perfect prediction of
 who dies within two years, from CT texture.
 
