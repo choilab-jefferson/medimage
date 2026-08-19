@@ -18,23 +18,34 @@ matter — but the script always writes into *this* checkout.
 
 ## The one thing to know
 
-`build()` emits cells with **empty outputs and no execution counts**. The committed notebooks are
-executed — 150 of their 153 code cells carry outputs, and readers browsing on GitHub see those
-figures without running anything.
+The committed notebooks are executed — 155 of their 158 code cells carry outputs, and readers
+browsing on GitHub see those figures without running anything.
 
-So regenerating is only half the job:
+`build()` preserves them. Before writing, it reads the notebook already at the target path and
+carries each executed code cell's outputs, execution count and metadata across to the cell with
+**byte-identical source**. So:
 
-1. Edit `chNN.py`.
-2. Run it, which produces the notebook with its outputs stripped.
-3. **Re-execute the notebook** before committing, or the figures disappear from the diff.
+- **Editing prose is safe.** Regenerating after a markdown-only change is a no-op for every code
+  cell, and `git diff` shows exactly the prose you changed.
+- **Editing code costs its outputs.** A code cell whose source changed no longer matches, so it
+  comes back empty rather than carrying a stale result that no longer corresponds to the code.
+  **Re-execute the notebook** before committing.
 
-For a small prose fix, editing the markdown cell in the `.ipynb` and making the identical edit in
-`chNN.py` is the cheaper path — it keeps the outputs and keeps the two in step. That is how commit
-`23386ad` was made.
+The line it prints says which happened: `wrote ...: 39 cells (16 code, 16 outputs kept)`. If the
+kept count drops, you changed code, and that notebook needs re-executing.
 
-To confirm the two have not drifted, generate into a scratch directory laid out like the repository
-(`<scratch>/generators/`) and compare cell sources against the committed notebooks; they should
-match exactly.
+Source text is the only key the two notebooks share, so **two code cells with identical source
+cannot be told apart** and neither keeps its outputs. Given three identical cells and a generator
+that now emits two, nothing in the text says which one was removed, and pairing them in file order
+would attach the wrong figure. Both come back empty instead, the kept count drops, and re-executing
+restores them. No chapter currently has a duplicated code cell.
+
+To confirm the two have not drifted, just regenerate in place and check `git status`:
+
+```bash
+for f in generators/ch*.py; do python "$f"; done
+git status --porcelain      # silent means the notebooks match their generators
+```
 
 ## Shared code
 

@@ -27,6 +27,20 @@ By the end you will be able to:
 4. Fix that with **filters**, and know when to use which kind.
 5. Tidy up a selection using its shape rather than its brightness.
 6. Find edges — and see exactly where brightness alone stops being enough.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Chapter 1 — Hounsfield units, `md.load_series`, and `spacing` |
+| **Downloads** | The same Pancreas-CT subject as Chapter 1, about 40 MB. Already cached if you ran it |
+| **Longest wait** | The download, roughly 20 seconds |
+| **Beyond the setup cell** | Nothing extra to install |
+| **Hardware** | Any laptop. No GPU needed |
+
+The one idea to carry in from Chapter 1: a pixel's value is in Hounsfield units, and fat and muscle
+occupy separate, non-overlapping ranges on that scale. Everything here is built on selecting by
+range.
 """),
 
 ("md", "## Setup"),
@@ -422,16 +436,58 @@ plt.show()
 That picture is, in miniature, what Chapter 6 does properly: pick a slice, select the tissues,
 count the pixels, convert to square centimeters.
 
+## Recap
+
+The pipeline this chapter built, in the order the steps have to happen:
+
+| Step | Why it is where it is |
+|---|---|
+| **1. Smooth** | `ndi.gaussian_filter`. Noise crosses the threshold at random, so thresholding first gives a speckled mask and a fat area that is simply wrong |
+| **2. Find the patient** | `body_mask`, cutting at −500 HU. The scanner table and the air around the body are otherwise counted as tissue |
+| **3. Select by range** | `(smoothed >= lo) & (smoothed < hi)`. A mask is a boolean array — combine masks with `&`, `|` and `~` |
+| **4. Tidy by shape** | `binary_opening` removes specks, `binary_closing` fills pinholes. This step uses geometry, not brightness |
+
+Three things worth keeping:
+
+- **A histogram is how you choose a cut-off** rather than guess one. The valley between two peaks is
+  a defensible boundary; a number you liked the look of is not.
+- **Order is not a style preference.** Smoothing after thresholding does something different from
+  smoothing before it, and only one of the two gives a stable area.
+- **Brightness runs out.** The edge-finding section is where it becomes visible: muscle and the
+  organs next to it share a HU range, so no threshold can separate them. That gap is exactly why
+  Chapter 6 has to bring in anatomy from a segmentation network.
+
+**Next:** Chapter 3 takes a selection like `fat_mask` and turns it into a measurement — separate
+objects, square centimeters, mean HU — and then asks whether the number can be believed.
+
 ## Exercises
 
 1. Change the `-500` in `body_mask` to `-200` and then to `-800`. What breaks in each case, and why
    is −500 a sensible default?
+
+   *Hint:* plot the resulting mask each time rather than only the area. At −200 you are cutting
+   through fat; at −800 you are letting lung and some of the air in. −500 sits in the empty gap
+   between air and every tissue, which is what makes it insensitive to the exact value.
+
 2. Measure the fat area for sigma from 0 to 6 and plot the result. Does it settle down? What does
    that tell you about how much the answer depends on your choice?
+
+   *Hint:* `[compartment(sl, -190, -30, sigma=g).sum() * px_area_cm2 for g in range(7)]`. Watch for
+   whether the curve flattens or keeps drifting — a flat stretch means the answer is not sensitive
+   to the parameter, which is the property you want to be able to claim.
+
 3. Run `compartment` on ten slices in a row and plot fat area against slice number. How much does
    the answer depend on *which* slice you happened to pick? (Chapter 6 has to solve this.)
+
+   *Hint:* loop over `vol[i]` for ten consecutive `i`. Compare the spread you get against the change
+   you would want to detect between two patients.
+
 4. Try to exclude the liver from the muscle mask using only what is in this chapter. Where does it
    break down, and what extra information would you need?
+
+   *Hint:* the honest answer is that it cannot be done here — liver and muscle overlap in HU.
+   Convince yourself by plotting a histogram of pixels inside each. The extra information is
+   anatomical location, which is what Chapter 6's segmentation network supplies.
 
 ## References
 

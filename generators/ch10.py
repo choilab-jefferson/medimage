@@ -24,6 +24,24 @@ By the end you will be able to:
 2. Score a registration in millimeters of residual error, rather than by looking at it.
 3. Run two independent engines — SimpleITK and plastimatch — on the same pair.
 4. Recognize a silent failure, and diagnose it to a root cause instead of permuting parameters.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Chapter 4 — resampling, `order=0` for masks, and scoring an alignment by searching |
+| **Downloads** | Two ACRIN CT series. Already cached if you ran Chapter 8 |
+| **Longest wait** | The downloads. The registrations themselves are quick |
+| **Beyond the setup cell** | `qradiomics` and `SimpleITK` by pip, plus **plastimatch, which is a system package** |
+| **Hardware** | Any laptop. No GPU needed |
+
+plastimatch is installed with `sudo apt-get install -y plastimatch` on Debian or Ubuntu, and the
+setup cell prints that command if it cannot find it. Sections 1–5 run without it; sections 6–8 are
+the plastimatch half and need it.
+
+Most of this chapter is a debugging narrative rather than a tutorial. Sections 6 to 8 diagnose one
+real failure from symptom to root cause, and the reasoning is the thing to take from it — the
+specific bug matters less than the method used to corner it.
 """),
 
 ("md", "## Setup"),
@@ -528,17 +546,38 @@ of the rotation-center fix may narrow the gap. That is exercise 3.
 4. **When something fails, find the one variable that controls it.** One controlled experiment beat
    thirteen parameter permutations here, and that ratio is typical.
 
+**Next:** Chapter 11 is where this pays off. Measuring change between two timepoints means measuring
+the same anatomy twice, and the alternative to registering — outlining the organ independently on
+each scan — turns out to generate a surprising amount of change all by itself.
+
 ## Exercises
 
 1. Register the two real ACRIN timepoints with both engines. There is no ground truth, so judge by
    overlap of a body mask before and after. Does the 98 mm center offset behave as this chapter
    predicts?
+
+   *Hint:* Chapter 2's `body_mask` and Chapter 3's `dice` are the two pieces you need. Without a
+   ground truth, overlap before versus after is the honest available check — and note what it still
+   cannot tell you about *internal* anatomy.
+
 2. Add `[STAGE] xform=translation` before the rigid stage on the real pair. Which component of the
    misalignment does it recover, and which does it leave?
+
+   *Hint:* a translation stage can only move, not turn. Run it alone first and look at the residual
+   — what remains is by definition the rotational part, which is exactly the argument for staging.
+
 3. Add coarse-to-fine stages (`res=4 4 2`, then `res=2 2 1`, then `res=1 1 1`) on top of the
    rotation-center fix and re-measure the TRE. Does the gap to SimpleITK narrow?
+
+   *Hint:* this is the open question section 8 declined to chase, so there is no answer at the back
+   of the book. `run_plastimatch` already takes a list of stages. Keep the rotation-center fix in
+   place, or you will be measuring two things at once.
+
 4. Take a registration that worked and shift the fixed image's origin by 2 meters. Predict what
    happens before running it.
+
+   *Hint:* write the prediction down first — that is the exercise. Then check the overlap and center
+   offset from section 2, and see whether they would have warned you *before* the registration ran.
 
 ## References
 

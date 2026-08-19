@@ -32,6 +32,23 @@ By the end you will be able to:
 4. Measure liver fat and compare it against the clinical threshold for fatty liver disease.
 5. Say precisely what a research-grade PDFF measurement adds, and why CT is still the default for
    whole-body composition.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Chapter 3, especially Part B's point that MRI brightness is not a calibrated scale |
+| **Downloads** | Several CHAOS T1-DUAL subjects, about 9 MB each |
+| **Longest wait** | Section 4 fetches four more subjects from Zenodo, one file at a time. Give it a couple of minutes |
+| **Beyond the setup cell** | Nothing extra to install |
+| **Hardware** | Any laptop. No GPU needed |
+
+If a download fails with **HTTP 429**, that is Zenodo rate-limiting the request, not a bug. The
+loader retries with a growing delay and skips files it already has, so re-running the cell resumes
+rather than restarting.
+
+The physics in section 1 is the part to read slowly. Everything afterwards is arithmetic on two
+images, and it will look arbitrary unless the reason there are exactly two is clear first.
 """),
 
 ("md", "## Setup"),
@@ -309,16 +326,59 @@ CT still wins for whole-body composition, for three practical reasons:
 None of this makes CT better. It makes CT *available*, which in clinical research is often the
 deciding factor.
 
+## Recap
+
+| | |
+|---|---|
+| **Two echoes** | At the in-phase echo time the fat and water signals add; at the opposed-phase time they subtract. Two measurements, two unknowns |
+| **Water and fat** | `water = (in + out) / 2`, `fat = (in − out) / 2` |
+| **Fat fraction** | `fat / (fat + water)` — a *proportion*, which is the calibrated quantity raw MRI brightness lacks |
+| **The 50% ceiling** | Only magnitudes are available, so the sign is lost. Above 50% fat, fat and water swap identities and the map folds back down instead of continuing up |
+| **Where it works** | Liver fat, where the true fraction is far below the ceiling. Compared against the 5% clinical threshold for steatosis |
+| **Where it does not** | Subcutaneous fat, which is nearly pure fat and therefore sits right where the method breaks |
+
+The chapter's real shape is worth noticing: it starts out looking like a general fat-measurement
+method and finishes as **a good liver measurement and a bad whole-body one**. The ceiling is not an
+implementation flaw to be fixed by better code — it follows from having only magnitude images. That
+is what research-grade PDFF buys with six echoes and complex data.
+
+And this is why Chapter 6 is done on CT. Not because CT is better at fat — MRI has no radiation and
+can see fat quality — but because the scans already exist, the scale is fixed, and the published
+cut-offs are defined on CT at L3.
+
+**Next:** Chapter 8 adds the third modality. PET measures how hard tissue is *working* rather than
+where it is, and brings its own calibrated unit, SUV, which is the direct counterpart of the
+Hounsfield unit.
+
 ## Exercises
 
 1. Compute the fat fraction of the kidneys (labels 126 and 189) for subject 5. Are they raised like
    the liver, and would you expect them to be?
+
+   *Hint:* reuse the liver cell with the label values swapped. Kidneys store far less fat than
+   liver, so a high reading is a reason to suspect the measurement — check whether the region
+   includes perirenal fat, which is nearly pure fat and sits against the ceiling.
+
 2. Set the background cut-off `in_phase > 20` to 5 and to 100. How much does the liver fat fraction
    move? What does that say about how carefully the threshold has to be chosen?
+
+   *Hint:* at 5 you admit background noise, where `fat + water` is near zero and the ratio explodes;
+   at 100 you discard genuinely dark tissue. Print how many pixels survive each cut-off alongside
+   the fraction.
+
 3. Subject 5 reads about 25%. The method caps at 50%. How close to the ceiling would a liver have to
    be before you stopped trusting the number?
+
+   *Hint:* there is no single right answer — argue it from the shape of the folding. Near 50% a
+   large change in true fat produces almost no change in the measured value, so the measurement
+   loses resolution well before it reaches the ceiling.
+
 4. Using the spleen as a control, work out this method's noise floor across all four subjects. Below
    what fat fraction would you decline to report a result?
+
+   *Hint:* the spleen should hold essentially no fat, so whatever it reads is your floor. This is
+   the same control-organ logic Chapter 11 uses for delta radiomics — a measurement is only a
+   finding if it is bigger than what the pipeline invents on something that did not change.
 
 ## References
 

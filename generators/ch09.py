@@ -25,6 +25,23 @@ You will be able to:
 3. Call the extraction primitives directly, and check image and mask geometry before trusting either.
 4. Measure how much one preprocessing choice — the gray-level bin width — moves each feature.
 5. Explain why that choice devastates texture features and leaves shape features untouched.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Chapter 3 (masks and measurement). Nothing from Part II is required |
+| **Downloads** | The **Lung1 cohort, 60 patients at roughly 25 MB each — around 1.5 GB** |
+| **Longest wait** | That first cell. On a cold cache expect a long download plus conversion and extraction; it is by far the slowest cell in the course |
+| **Beyond the setup cell** | `pyradiomics` (from git), `qradiomics`, `rt-utils`, `opencv-python-headless` |
+| **Hardware** | Any laptop. No GPU needed |
+
+**Chapters 9, 12 and 13 share this cohort.** `md.fetch_lung1_cohort(60)` prepares it once and
+caches every artifact, so whichever of the three you run first pays the cost and the other two
+start immediately. On Colab the cache lives in the runtime, so it is lost when the session ends.
+
+Read this chapter before Chapter 13 if you want to know what the 1130 numbers are; read it after if
+you would rather see them used first. Neither order breaks anything.
 """),
 
 ("md", "## Setup"),
@@ -298,16 +315,59 @@ The practical guidance is short:
    as Chapter 13 shows, they reproduce.
 5. **Check geometry before extracting.** A silently misaligned mask produces confident nonsense.
 
+## Recap
+
+**The three families**, and how each behaves when somebody else runs your pipeline:
+
+| Family | Measures | Stability |
+|---|---|---|
+| **Shape** | The geometry of the mask — volume, surface area, sphericity, elongation | Computed from the mask alone, so bin width does not touch it. The most reproducible family |
+| **First-order** | The distribution of intensities inside the mask — mean, entropy, skewness | Partly affected; depends on discretization for the histogram-based ones |
+| **Texture** | Spatial relationships between neighbouring intensities — GLCM, GLRLM and the rest | Computed on *discretized* intensities, so the bin width changes the answer directly. The least reproducible family |
+
+**The bin width result is the chapter's core.** Before texture can be computed, the intensities are
+sorted into gray-level bins, and the bin width is a free parameter. Change it and texture features
+move substantially while shape features do not move at all — not because texture is bad, but because
+it is measuring relationships between bins that you just redefined.
+
+**Two engines, two answers.** The same image and mask, extracted by two engines, gave different
+feature counts and different values, because "the same feature" is not defined identically by both.
+That is what **IBSI** exists to fix, and what a claim of "IBSI-compliant" is asserting.
+
+So the five practical rules: fix and *name* a pattern, report the bin width, resample to a fixed
+voxel size first, prefer shape features when you can, and check geometry before extracting.
+
+**Next:** Chapter 10 takes on registration, where the geometry check in rule five comes from — and
+where a pipeline can fail while reporting success.
+
 ## Exercises
 
 1. Extract with bin widths 5, 15, 25, 35 and 50, and plot one GLCM feature against bin width for a
    few patients. Is the relationship smooth, or does the ranking of patients change?
+
+   *Hint:* plot one line per patient on shared axes. A smooth shift affecting everyone equally
+   would be survivable; lines that cross mean the bin width changes *which patient looks worse*,
+   which is fatal for anything built on top.
+
 2. After Chapter 13, re-run its survival model on the bin-width-10 features. Does the c-index
    move? Is the direction consistent, or is it noise?
+
+   *Hint:* run it several times with different seeds before concluding. Chapter 13 shows the
+   c-index confidence interval on this cohort is wide enough to swallow most differences.
+
 3. Take one patient's mask and shift it by five voxels with `scipy.ndimage.shift`. Which features
    change most — shape, first-order or texture? Would `check_geometry` have caught it?
+
+   *Hint:* use `order=0`, per Chapter 4 — this is a mask. Shape features barely move, since the
+   shape is unchanged, only relocated. The answer to the second question is the point: geometry
+   metadata still agrees, so the check passes and the mask is still wrong.
+
 4. Compare a first-order feature computed by both engines on the same patient. If they disagree,
    which definition is each using?
+
+   *Hint:* start with an unambiguous one like mean or maximum. If those agree but entropy does not,
+   the disagreement is about discretization, not about the statistic — which is the bin width
+   problem arriving from a different direction.
 
 ## References
 

@@ -78,11 +78,10 @@ python generators/ch09.py     # rewrites Chapter09_Radiomics_Features.ipynb
 Keeping the source as text is what makes a change like renumbering the chapters or rewording a
 cross-reference an ordinary edit rather than surgery on notebook JSON.
 
-One thing to know before running it: `build()` emits cells with **empty outputs**, while the
-committed notebooks are executed and carry their figures. Regenerating therefore strips those
-figures unless you re-execute afterwards. For a small prose fix it is cheaper to edit the markdown
-cell in the `.ipynb` and make the identical edit in `chNN.py`, which keeps the two in step without
-losing the outputs. See [generators/README.md](generators/README.md).
+`build()` carries the executed outputs across: any code cell whose source is unchanged keeps its
+figures, so regenerating after a prose edit is a no-op for everything you did not touch. A code cell
+whose source *did* change comes back empty rather than showing a stale result, so re-execute the
+notebook before committing. See [generators/README.md](generators/README.md).
 
 ## Data policy
 
