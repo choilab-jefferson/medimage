@@ -67,45 +67,38 @@ jupyter lab
 
 ### How long each chapter takes
 
-Measured on a CPU-only machine. **First run** is with the derived artifacts cleared but the images
-already downloaded; **re-run** is with everything cached, which is what you get the second time.
+Rough figures from a CPU-only machine, to tell you whether a chapter is a coffee break or a
+five-minute read. **First run** builds everything from the downloaded images; **later runs** reuse
+what it cached.
 
-| Chapter | Downloads | First run | Re-run |
+| Chapter | Downloads | First run | Later runs |
 |---|---|---|---|
-| 1. Exploration | 40 MB | 24 s | 24 s |
-| 2. Masks and filters | cached from Ch 1 | 24 s | 24 s |
-| 3. Measurement | + 9 MB | 51 s | 51 s |
-| 4. Image comparison | + 6 subjects | 58 s | 58 s |
-| 5. Patient privacy | cached from Ch 1 | 20 s | 20 s |
-| 6. Body composition from CT | + model weights | **20 min** | 17 s |
-| 7. Fat quantification with MR | + 4 subjects | 15 s | 15 s |
-| 8. PET/CT | ~500 MB | **8 min** | 38 s |
-| 9. Radiomics features | 1.5 GB | **8 min** † | 33 s |
-| 10. Registration | cached from Ch 8 | 94 s | 94 s |
-| 11. Delta radiomics | ~500 MB | **50 min** | 40 s |
-| 12. Classification | cached from Ch 9 | **15 min** † | 8 min |
-| 13. Reproducing published results | cached from Ch 9 | **9 min** | 2 min |
-
-† Derived, not timed directly: the chapter's own re-run time plus the shared Lung1 build below.
-Chapter 13's 9 minutes is the one that was measured end to end.
+| 1. Exploration | 40 MB | under a minute | under a minute |
+| 2. Masks and filters | — | under a minute | under a minute |
+| 3. Measurement | 9 MB | about a minute | about a minute |
+| 4. Image comparison | 6 more subjects | about a minute | about a minute |
+| 5. Patient privacy | — | under a minute | under a minute |
+| 6. Body composition from CT | model weights | **20 min** | under a minute |
+| 7. Fat quantification with MR | 4 subjects | under a minute | under a minute |
+| 8. PET/CT | ~500 MB | **10 min** | under a minute |
+| 9. Radiomics features | 1.5 GB | **10 min** | under a minute |
+| 10. Registration | — | a minute or two | a minute or two |
+| 11. Delta radiomics | ~500 MB | **50 min** | under a minute |
+| 12. Classification | — | **15 min** | **10 min** |
+| 13. Reproducing published results | — | **10 min** | a couple of minutes |
 
 Chapters 6, 8 and 11 cost what they cost because they run a neural network — TotalSegmentator, on
 the CPU, twice in Chapter 6, once in Chapter 8, and twelve times in Chapter 11. A GPU runtime cuts
 this sharply, and Colab offers one under *Runtime → Change runtime type*.
 
 Chapters 9, 12 and 13 share one prepared Lung1 cohort. Building it — converting contours,
-resampling, and extracting 1130 features for 60 patients — takes about **7 minutes** and is charged
-to whichever of the three you run first; the other two then start immediately. Chapter 12 stays at
-8 minutes even on a re-run, because its work is model benchmarking rather than extraction, and that
-is not cached.
+resampling, and extracting 1130 features for 60 patients — takes most of that first run and is
+charged to whichever of the three you open first; the other two then start almost immediately.
+Chapter 12 stays slow even afterwards, because benchmarking eight models is work that cannot be
+cached.
 
-That build is reproducible: rebuilding it from the same images reproduced 98% of the 66,670 feature
-values exactly, and the rest to within 2×10⁻¹² relative — CSV rounding. That is what pinning the
-pyradiomics commit buys.
-
-Two things these numbers exclude. **Download time is not measured** — the volumes are listed, but
-how long they take depends on your connection and on TCIA. And on Colab the setup cell installs
-packages on every fresh session, which adds a few minutes before any of the above begins.
+Downloads are not included in the times, since that depends on your connection and on how busy TCIA
+is. Neither is the setup cell, which on Colab reinstalls packages every fresh session.
 
 ## How the notebooks are built
 

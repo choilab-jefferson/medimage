@@ -34,7 +34,7 @@ By the end you will be able to:
 |---|---|
 | **Builds on** | Chapter 9 (what a feature is) and Chapter 10 (why registration matters here) |
 | **Downloads** | Two CT timepoints for each of six ACRIN patients — several hundred MB |
-| **Longest wait** | Section 1, by a wide margin. It downloads that cohort *and* runs a segmentation network twelve times: measured at **about 50 minutes** on a CPU-only machine with the scans already downloaded |
+| **Longest wait** | Section 1, by a wide margin: it downloads the cohort *and* segments twelve scans — **around 50 minutes** on a CPU |
 | **Beyond the setup cell** | `pyradiomics` (from git), `qradiomics`, `SimpleITK`, `TotalSegmentator` |
 | **Hardware** | **Use a GPU runtime.** Twelve segmentation runs is where the time goes |
 
@@ -91,10 +91,9 @@ of two visits for a handful of patients.
 Two organs are segmented on every scan: the **heart**, and the **liver** as a control. More on why
 the control matters shortly.
 
-This cell downloads several hundred megabytes and runs a segmentation network twelve times. Twelve
-runs is the whole cost: on a CPU-only machine, with the scans already downloaded, this took **about
-50 minutes**. A GPU runtime is strongly advised. Afterwards it reads from the cache and returns in
-under a minute.
+This cell downloads several hundred megabytes and runs a segmentation network twelve times. Those
+twelve runs are the whole cost — **around 50 minutes** on a CPU, so a GPU runtime is strongly
+advised. Afterwards it reads from the cache and returns in under a minute.
 """),
 ("code", """\
 series = md._get_json(f"{md.NBIA}/getSeries?Collection=ACRIN-NSCLC-FDG-PET")

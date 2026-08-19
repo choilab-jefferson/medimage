@@ -39,7 +39,7 @@ survival in non-small-cell lung cancer.
 |---|---|
 | **Builds on** | Chapter 1 (headers, spacing) and Chapter 4 (resampling onto a common grid) |
 | **Downloads** | Three ACRIN series — two PET timepoints and one CT. Several hundred MB in total |
-| **Longest wait** | The downloads, plus the TotalSegmentator run in section 3 — **about 8 minutes** on a CPU-only machine once the series are downloaded |
+| **Longest wait** | The downloads, plus the TotalSegmentator run in section 3 — **around 10 minutes** on a CPU |
 | **Beyond the setup cell** | `qradiomics`, `SimpleITK` and `TotalSegmentator`, installed by the setup cells |
 | **Hardware** | A GPU runtime makes section 3 much faster, as in Chapter 6 |
 

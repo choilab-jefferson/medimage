@@ -39,7 +39,7 @@ network.
 |---|---|
 | **Builds on** | Chapters 1–4, all four of them. This is where they combine |
 | **Downloads** | One Pancreas-CT subject (~40 MB), plus TotalSegmentator's weights, a few hundred MB |
-| **Longest wait** | The two segmentation runs. Measured end to end on a CPU-only machine with the scan already downloaded: **about 20 minutes**, nearly all of it the network. A GPU cuts this sharply |
+| **Longest wait** | The two segmentation runs — **around 20 minutes** on a CPU, and nearly all of the chapter. A GPU cuts it sharply |
 | **Beyond the setup cell** | `TotalSegmentator`, `SimpleITK`, `scikit-image`, installed by the second cell |
 | **Hardware** | **Switch Colab to a GPU runtime** before running: *Runtime → Change runtime type → T4 GPU*. It works on CPU, just slowly |
 
@@ -56,9 +56,8 @@ in a CT. It brings its own PyTorch and model weights, so the first run downloads
 megabytes before it computes anything.
 
 This chapter segments twice — the lumbar vertebrae in section 2, then the full label map in
-section 4. On a CPU-only machine that took **about 20 minutes** end to end, with the scan already
-downloaded. On Colab a GPU runtime makes it much faster, which is worth switching on before you
-start.
+section 4. On a CPU that is **around 20 minutes**. On Colab a GPU runtime makes it much faster,
+which is worth switching on before you start.
 """),
 ("code", SETUP),
 ("code", """\
