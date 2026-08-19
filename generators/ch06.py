@@ -32,6 +32,20 @@ Three questions have to be answered to get there, and only the third is arithmet
 
 The answer to 1 and 3 is anatomy, not intensity — which is why this chapter brings in a segmentation
 network.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Chapters 1–4, all four of them. This is where they combine |
+| **Downloads** | One Pancreas-CT subject (~40 MB), plus TotalSegmentator's weights, a few hundred MB |
+| **Longest wait** | The segmentation run in section 2 — a few minutes on CPU, much less on a GPU |
+| **Beyond the setup cell** | `TotalSegmentator`, `SimpleITK`, `scikit-image`, installed by the second cell |
+| **Hardware** | **Switch Colab to a GPU runtime** before running: *Runtime → Change runtime type → T4 GPU*. It works on CPU, just slowly |
+
+This is the longest-running chapter in Part I. Start the setup cells, then read the prose in
+section 2 while the network runs — it explains what the output means and, more to the point, why
+section 2 refuses to trust it until three independent checks agree.
 """),
 
 ("md", """\
@@ -418,16 +432,61 @@ Stated plainly, because every number above has them:
 None of this makes the method wrong. It makes the numbers *illustrative of the method*, which is
 what a teaching notebook can offer.
 
+## Recap
+
+The three questions from the top of the chapter, and how each was answered:
+
+| Question | Answer | How it was checked |
+|---|---|---|
+| **Which slice is L3?** | The network's vertebra labels give the level directly | Three independent checks — the label's own extent, the neighbouring vertebrae, and the sagittal view — rather than trusting one number |
+| **Muscle or organ?** | The network's muscle labels, not a HU threshold. Chapter 2 showed the threshold cannot separate them | Overlap against the network's own muscle labels |
+| **SAT or VAT?** | Fat inside the abdominal cavity is visceral, fat outside it is subcutaneous. The cavity boundary comes from geometry — a convex hull — not from brightness | Stated as approximate, with the error it introduces named |
+
+Then the arithmetic, which is the easy part: count pixels in each compartment, multiply by pixel
+area, divide by height squared to get an **index** that is comparable between patients.
+
+Three habits this chapter is really about:
+
+- **A pretrained network is an input to verify, not an oracle.** The section title is "Do not trust
+  this yet" and that is the transferable skill. Different run settings gave materially different L3
+  answers.
+- **When intensity cannot answer the question, bring in anatomy.** Two of the three questions had
+  nothing to do with HU values at all.
+- **The last step needs data no scan contains.** Turning cm² into a clinical statement requires the
+  patient's height, and getting it wrong moves the answer across the diagnostic threshold.
+
+**Next:** Chapter 7 measures fat the other way — with MRI, which has no calibrated scale and so
+cannot threshold at all — and explains why CT is still the default for whole-body composition.
+
 ## Exercises
 
 1. Move `L3_SLICE` up and down by 10 slices and re-measure. How much do muscle and VAT change? What
    does that say about how precisely the level has to be found?
+
+   *Hint:* 10 slices is roughly a centimeter of body. Compare the change you get against the
+   difference between a healthy and a sarcopenic patient — if they are the same size, the level has
+   to be found precisely, which is why section 2 spends so long on it.
+
 2. Replace the convex hull with `ndi.binary_erosion` of the body mask. Compare all three areas. Which
    compartment is most sensitive to how the boundary is drawn?
+
+   *Hint:* SAT and VAT are separated *by* that boundary, so an error moves fat from one into the
+   other — the two move in opposite directions while their sum stays nearly fixed. Muscle barely
+   notices. This is the systematic error named in the limitations.
+
 3. Run the whole pipeline on `md.fetch_pancreas_ct(1)` and `(2)`. Rank the subjects by muscle area,
    then by VAT/SAT ratio. Do the rankings agree?
+
+   *Hint:* wrap sections 2–4 in a function taking the subject index. Expect the rankings to
+   disagree — they measure different things, and a patient can have plenty of muscle and a poor fat
+   distribution at the same time.
+
 4. Compute mean muscle HU for three subjects. Combined with muscle area, which subject would you be
    most concerned about, and what else would you need to know before saying so?
+
+   *Hint:* Chapter 3 section 4 covers mean HU and myosteatosis. Low area *and* low mean HU is the
+   worst combination. What you still need is height — without it there is no index — and these are
+   contrast-enhanced pancreas-protocol scans, which shifts organ HU.
 
 ## References
 

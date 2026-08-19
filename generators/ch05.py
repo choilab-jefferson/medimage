@@ -18,8 +18,8 @@ number, their date of birth, the referring physician, the institution — severa
 of which have nothing to do with the image. Move that file to a laptop, a shared drive, or a cloud
 notebook, and you have moved identifiable medical records with it.
 
-This chapter is about the step that has to happen before any of the previous eight can be applied to
-real data.
+This chapter is about the step that has to happen before any of the previous four can be applied to
+real data — and before any of the eight that follow.
 
 By the end you will be able to:
 
@@ -31,6 +31,20 @@ By the end you will be able to:
 > **This chapter teaches a technique, not a compliance sign-off.** What is legally required depends
 > on your jurisdiction, your institution and your study. Talk to your IRB or data protection office.
 > No notebook can do that for you.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Chapter 1 — reading a DICOM header with pydicom. Nothing else |
+| **Downloads** | Four DICOM files from the Chapter 1 subject. Already cached if you ran Chapter 1 |
+| **Longest wait** | Installing `qradiomics`, under a minute |
+| **Beyond the setup cell** | `qradiomics`, installed by the second cell — it provides the `qr` command line tool |
+| **Hardware** | Any laptop. No GPU needed |
+
+This chapter is unusual in that **no real identifiers are involved anywhere**. Section 1 writes
+invented ones into a copy of a public, already de-identified scan, so that there is something to
+find and remove. Everything you see removed here was put there by the notebook a few cells earlier.
 """),
 
 ("md", "## Setup"),
@@ -368,16 +382,59 @@ Putting it together, the sequence for real data is:
 4. Store the mapping file with the identifiable data, not with the shared copy.
 5. Only then start Chapter 1.
 
+## Recap
+
+| | |
+|---|---|
+| **Where PHI lives** | Several hundred header fields, most unrelated to the image. Names, IDs, dates, institution, referring physician |
+| **Removing it** | `qr anonymize`, which implements a defined standard rather than a list somebody remembered to write |
+| **Pseudonyms** | `--replace-pid` with a salt gives the same patient the same fake ID across files, so a cohort still joins up. That is *pseudonymity*, not anonymity — the mapping still exists |
+| **Dates** | Shifted by a constant per patient rather than deleted, because intervals between scans are the data in a longitudinal study |
+| **Verifying** | Re-read the output and search it. An `assert` here turns into a gate in an export script |
+| **What survives** | `PixelSpacing`, `RescaleSlope`, `ImagePositionPatient` — remove those and the file stops being a measurement |
+
+The structural point is the one worth taking away: **removal and verification are separate steps,
+and the second is not optional.** An anonymizer that silently skipped a tag looks exactly like one
+that worked. Only re-reading the output tells them apart.
+
+And be precise about what the audit cannot reach: burned-in pixel text, vendor private tags, a
+recognizable face in a head CT, and re-identification from a rare diagnosis in a small hospital.
+De-identification lowers risk; it does not reach zero.
+
+**Next:** Part I is complete — you can load a scan, select tissue, measure it, compare it across
+patients, and handle it safely. Chapter 6 puts all five to work on the measurement the course has
+been building toward.
+
 ## Exercises
 
 1. Add a tag to `FAKE_PHI` that the anonymizer does not clear — `PatientComments` is a good one —
    and audit the result. Does the audit catch it? If not, what would you add to the checks?
+
+   *Hint:* the audit has two layers, and this exercise is about the gap between them.
+   `PatientComments` is not in `MUST_BE_BLANK`, so layer one ignores it; its VR is `LT`, so layer
+   two does scan it — but only for things matching `LOOKS_IDENTIFYING`. Try two values: one with a
+   long digit run, and one like `"patient's mother called about the appointment"`. The first is
+   caught, the second is not, and no pattern list will ever catch the second. That is the argument
+   for blanking free-text fields wholesale rather than scanning them.
+
 2. Change `--pid-salt` and re-run. Does the same patient get the same pseudonym? Why does that
    matter for combining two datasets — and why is it also a risk?
+
+   *Hint:* run it twice with each salt and compare. Same salt means two batches from the same study
+   join up correctly. It also means anyone holding the salt can re-derive the link.
+
 3. `StudyInstanceUID` is not a name, but it is unique to one study. Check whether it changed. Should
    it have?
+
+   *Hint:* print it before and after. An unchanged UID is a stable key back to the source archive,
+   which is a re-identification route that carries no name at all.
+
 4. Write a check that confirms `PixelSpacing`, `RescaleSlope` and `ImagePositionPatient` are
    unchanged. Why is that check as important as the PHI audit itself?
+
+   *Hint:* an over-eager anonymizer that clears these produces files that are perfectly private and
+   scientifically worthless — and, like the leak, it does so without complaining. Chapter 1
+   section 2 says what each of the three does.
 
 ## References
 

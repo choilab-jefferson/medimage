@@ -29,6 +29,23 @@ By the end of this chapter you will have:
 1. Run a complete radiomics study end to end, from download to survival statistics.
 2. Compared your result against both a full-cohort reproduction and the published number.
 3. Seen exactly how badly a small cohort behaves, and learned to recognize the symptoms.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Chapter 9 explains what the 1130 features are; Chapter 12 shares this cohort. Neither is required first |
+| **Downloads** | The **Lung1 cohort, 60 patients at roughly 25 MB each — around 1.5 GB** |
+| **Longest wait** | The full `qr` chain in section 1: download, contour conversion, resampling and extraction. Budget a long coffee on a cold cache |
+| **Beyond the setup cell** | `pyradiomics` (from git), `qradiomics`, `rt-utils`, `opencv-python-headless` |
+| **Hardware** | Any laptop. No GPU needed |
+
+Everything is cached per patient, so a re-run costs nothing and raising `N_PATIENTS` only fetches
+the new ones. On Colab the cache lives in the runtime and disappears with the session.
+
+This chapter is mostly `qr` command-line calls rather than Python, which is deliberate — it is what
+running a real study looks like. **Expect the reproduction to fail at 60 patients.** That is the
+result, not a mistake in your run, and section 6 is where it is explained.
 """),
 
 ("md", """\
@@ -354,16 +371,68 @@ result and a coin toss.
 - **One extraction setting.** Bin width, resampling and interpolation all move radiomics features,
   and this notebook fixes them without exploring the alternatives.
 
+## Recap
+
+The pipeline, end to end. Note what it is made of: a handful of `qr` commands, most of them run for
+you inside `md.fetch_lung1_cohort`, rather than a codebase of your own.
+
+| Step | Command |
+|---|---|
+| **Download** | `qr tcia download` |
+| **Convert contours** | `qr convert`, turning RTSTRUCT outlines into masks |
+| **Preprocess** | `qr preprocess`, cropping and resampling to a fixed voxel size |
+| **Extract** | `qr extract`, giving 1130 features per patient |
+| **Merge outcomes** | `qr results merge`, joining the clinical table onto the feature table |
+| **Analyze** | `qr analyze survival`, giving a c-index and hazard ratios |
+
+**What reproduced and what did not.** At 60 patients the c-index was 0.48, with a confidence
+interval spanning chance. The full-cohort reproduction reaches 0.580, against 0.650 published. The
+method did not change between those rows — only the amount of data. At 12 patients the symptoms are
+unmistakable once you know them: a c-index of exactly 0.500 and hazard ratios around $10^{96}$ are
+not weak findings but a model with nothing to fit.
+
+**The second reproduction worked better.** Geometric shape features — spiculation and its relatives —
+came back more consistently than the fitted survival model, and they carry a second advantage: when
+a clinician asks why a patient was flagged, "it has four spikes and high spike sharpness" is an
+answer, and "its wavelet-HHH GLCM informational measure of correlation 2 was elevated" is not.
+
+**Where this leaves the course.** The recurring question in all thirteen chapters was *is this
+number right*, and the answers accumulated into one method: know what the units mean (Ch 1–3), check
+against a reference (Ch 3, 6), measure your own noise floor (Ch 7, 11), distrust a result that is
+too good (Ch 12), and confirm the pipeline can recover something already known before asking it
+something new (this chapter). A pipeline that cannot reproduce a known result is not ready to
+produce a new one.
+
 ## Exercises
 
 1. Set `N_PATIENTS` to 20 and then to 100 and record the c-index each time. Plot it against patient
    count. Where does it start to stabilize?
+
+   *Hint:* plot the confidence interval, not just the point estimate — the interval narrowing is the
+   real signal, and the point estimate will bounce around unhelpfully. Caching means each step only
+   costs the new patients.
+
 2. Re-run the extraction with `--bin-width 10` instead of the pattern default. How much do the
    feature values move? How much does the c-index move?
+
+   *Hint:* Chapter 9 measured the first half — expect roughly two thirds of features to move more
+   than 10%. The interesting part is the second half: a large movement in the inputs need not move
+   the c-index, because on this cohort the interval is wide enough to hide it.
+
 3. Convert a structure set *without* `--roi GTV-1` and compare the mask with the correct one using
    Chapter 3's Dice function. What organ did you actually get?
+
+   *Hint:* the structure set holds several ROIs — lungs and cord among them — and without the flag
+   you get whichever comes first, not an error. Extraction then runs happily and returns 1130
+   perfectly valid numbers about the wrong structure.
+
 4. Of the features ranked most significant, how many would you still expect to be significant after
    correcting for 1130 tests (try Bonferroni: divide 0.05 by the number of tests)?
+
+   *Hint:* the threshold becomes 0.05 / 1130 ≈ 4.4 × 10⁻⁵. Compare it against the p-values in the
+   table. Bonferroni is conservative and the features are highly correlated, so this is an upper
+   bound on the correction — but if nothing survives it, that is worth knowing before writing the
+   result up.
 
 ## References
 

@@ -24,6 +24,21 @@ By the end you will be able to:
 
 The last point is the important one. Any code will produce a number. Only a comparison tells you
 whether to believe it.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Chapter 1 (loading, spacing) and Chapter 2 (masks, smoothing, `body_mask`) |
+| **Downloads** | The Chapter 1 Pancreas-CT subject (~40 MB), plus one CHAOS MRI subject (~9 MB) for Part B |
+| **Longest wait** | The CHAOS download. It is fetched from Zenodo one file at a time, so give it a minute |
+| **Beyond the setup cell** | Nothing extra to install |
+| **Hardware** | Any laptop. No GPU needed |
+
+The chapter comes in two halves. **Part A** measures on CT and is a direct continuation of
+Chapter 2. **Part B** switches to MRI to answer a different question — not *what is the number* but
+*is the number right* — because the MRI dataset comes with expert reference outlines to check
+against, and the CT does not.
 """),
 
 ("md", "## Setup"),
@@ -344,17 +359,62 @@ It is also why Chapter 7, which measures body fat on MRI, does not threshold at 
 combines two images physically to compute a **fat fraction** — a real proportion, not a brightness —
 which restores the calibrated quantity that MRI otherwise lacks.
 
+## Recap
+
+**Part A — turning a selection into numbers.**
+
+| | |
+|---|---|
+| **Separate objects** | `ndi.label` numbers each connected blob |
+| **Pick the ones you want** | `ndi.sum_labels` over an array of ones totals the pixels per object, so sorting by size and dropping the fragments is one step. "Keep the large ones" is a rule you should state rather than assume |
+| **Area** | pixels × `dy * dx`, divided by 100 for cm² |
+| **Volume** | voxels × `dz * dy * dx`, divided by 1000 for millilitres |
+| **What is inside** | Mean, median and standard deviation of the HU *inside* the mask. Mean muscle HU is itself a clinical measurement — fat infiltrating muscle lowers it |
+| **Where it is** | `ndi.center_of_mass`, and `ndi.distance_transform_edt` for how deep inside a point sits |
+
+**Part B — checking it.** Dice is `2 × overlap / (size A + size B)`: 1.0 is identical, 0.0 is no
+overlap at all. The threshold estimate of the liver scored badly, and the reason generalizes:
+
+- **A calibrated scale is what makes a fixed threshold portable.** CT has one, so −190 to −30 HU
+  means fat in any hospital. MRI does not, so a brightness cut-off tuned on one scan is worth
+  nothing on the next.
+- **Volume agreement is a weaker check than Dice.** Two shapes can have the same volume in
+  completely different places. Exercise 2 makes this concrete.
+- **Without a reference you would not have known.** The wrong answer arrived with no warning
+  attached, which is the recurring theme of the whole course.
+
+**Next:** Chapter 4 handles the problem that appears as soon as you have two of these measurements —
+two scans are on different grids, of differently sized people, and cannot be compared as they stand.
+
 ## Exercises
 
 1. Compute Dice for the spleen (label 252) using the same threshold approach. Is it better or worse
    than the liver, and can you explain why from the images?
+
+   *Hint:* swap the label value in the reference comparison and keep everything else the same. The
+   spleen is smaller, so think about what a fixed amount of boundary error does to Dice for a small
+   object versus a large one.
+
 2. The threshold estimate is too large. Try shrinking it with `ndi.binary_erosion` until the volume
    matches the reference. Does Dice improve as much as the volume error does? What does that tell
    you about using volume agreement as a check?
+
+   *Hint:* loop `ndi.binary_erosion(mask, iterations=k)` over `k`, printing volume error and Dice
+   side by side. Expect volume error to reach nearly zero while Dice stays poor — the shape is in
+   the wrong place, and matching totals cannot fix that.
+
 3. Measure fat area on ten consecutive CT slices and plot it. How much does the answer depend on
    which slice you pick? (Chapter 6 has to solve exactly this.)
+
+   *Hint:* this repeats Chapter 2's exercise 3 deliberately. Now that you can convert to cm², state
+   the spread as a real area rather than a pixel count.
+
 4. Calculate the mean HU of muscle on the first and last slice of the CT. If they differ, is that
    real myosteatosis or an artifact of which anatomy each slice contains?
+
+   *Hint:* `vol[0]` and `vol[-1]` are tens of centimeters apart in the body, so they contain
+   different muscles entirely. To ask the clinical question properly you would need the *same*
+   muscle in both — which is why Chapter 6 measures at one standardized anatomical level.
 
 ## References
 

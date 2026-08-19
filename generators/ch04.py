@@ -26,6 +26,20 @@ By the end you will be able to:
 5. Normalize a measurement so that two patients of different sizes can be compared at all.
 
 That last step is what turns Chapter 6's muscle area into a number with a published cut-off.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Chapters 1–3. Section 5 re-uses Chapter 2's body-finding cut at −500 HU and Chapter 3's pixel-count-to-cm² step |
+| **Downloads** | Two Pancreas-CT subjects (~40 MB each), and six more in section 5 |
+| **Longest wait** | Section 5 loads six subjects, so allow a few minutes on a cold cache |
+| **Beyond the setup cell** | Nothing extra to install |
+| **Hardware** | Any laptop. No GPU needed |
+
+This is the last of the foundation chapters, and the one whose lesson is least about code. Sections
+2 to 4 are mechanical — resample, move, score. Section 5 is the one to slow down for: it is a
+decision about what your measurement *means*, and the chapter shows it being made badly on purpose.
 """),
 
 ("md", "## Setup"),
@@ -309,16 +323,60 @@ This is the last piece of groundwork. Chapter 6 now has everything it needs: loa
 (Chapter 1), select tissue reliably (Chapter 2), turn the selection into square centimeters and
 check it (Chapter 3), and normalize it so patients can be compared (this chapter).
 
+## Recap
+
+| | |
+|---|---|
+| **Shape is not size** | Two `512 × 512` slices can cover very different amounts of body. Only `shape × spacing` is a physical size |
+| **Resampling** | `ndi.zoom` onto a common grid. The zoom factor comes from the *spacings*, not from the shapes |
+| **Interpolation order** | `order=1` for images. **`order=0` for masks**, always — anything else invents label values that mean nothing |
+| **Moving images** | `ndi.shift` and `ndi.rotate`, with `cval=-1024` so the space that scrolls in is air rather than water |
+| **Similarity** | MAE: 0 for identical, larger as they diverge. Dice compares shapes instead of intensities |
+| **Finding an alignment** | Score every candidate shift and keep the best. That search *is* registration, in miniature — Chapter 10 does it properly |
+| **Normalization** | Dividing by a body-size measure so two patients can be compared |
+
+The two things most worth carrying forward:
+
+- **`order=0` for masks.** Interpolating a label image blends label 1 and label 3 into label 2,
+  which is a different organ. It fails silently and it is a common bug.
+- **Normalizing is a decision, not a formality.** Dividing muscle area by body *width* squared did
+  not remove the size correlation — it flipped its sign, from +0.61 to −0.57, and made big patients
+  look worse than they are. The check is what revealed it. Clinical practice divides by height
+  squared, using cut-offs validated against outcomes rather than assumed to work.
+
+**Next:** Chapter 5 covers the step that has to happen before any of this touches real clinical
+data — removing identifying information from DICOM files, and verifying it is gone. After that,
+Chapter 6 is the destination these four chapters were building toward.
+
 ## Exercises
 
 1. Resample patient A's slice to 2 mm pixels and back to the original size. Compare with the
    original using MAE. What has been lost, and why can it not be recovered?
+
+   *Hint:* two `ndi.zoom` calls with reciprocal factors. The MAE will not be zero. Think about how
+   many original pixels were averaged into each coarse one — that information is gone, and zooming
+   back up can only interpolate, not restore.
+
 2. Repeat the shift search with a step of 1 instead of 4. Is the answer better? How much longer does
    it take, and what does that suggest about how real registration software must work?
+
+   *Hint:* time both with `%%time`. The cost grows with the square of the step reduction in 2D, and
+   with the cube in 3D. Real software avoids this with a coarse-to-fine pyramid — search roughly on
+   a shrunken image, then refine. Chapter 10 shows that pyramid mattering in practice.
+
 3. Rotate a slice by 5 degrees using `order=0` and `order=3` and compare with MAE. Which
    interpolation preserves the intensities better, and would your answer change for a label mask?
+
+   *Hint:* `order=3` wins on the image and is wrong on the mask. Check the second half by running
+   `np.unique` on a rotated label image — `order=3` will have produced values that were never a
+   label, and can overshoot outside the original range entirely.
+
 4. Compute muscle area for five subjects with and without normalization. Which ranks the subjects
    differently, and which ranking would you trust?
+
+   *Hint:* section 5 already builds the per-subject loop; reuse it and sort by each column. Neither
+   ranking deserves much trust here — with this few subjects, and body width standing in for height,
+   the point of the exercise is that the two disagree at all.
 
 ## References
 

@@ -24,6 +24,23 @@ By the end you will be able to:
 3. Benchmark several models under nested cross-validation.
 4. **Recognize a result that is too good, find the leak that caused it, and prove it.**
 5. Explain why picking the best of eight models is itself a way to fool yourself.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Chapter 9 helps but is not required. No imaging code here — the features already exist |
+| **Downloads** | The same **Lung1 cohort, 60 patients, around 1.5 GB** that Chapters 9 and 13 use |
+| **Longest wait** | The cohort preparation, if no other chapter has already cached it |
+| **Beyond the setup cell** | `pyradiomics` (from git), `qradiomics`, `statsmodels`, `lightgbm`, `xgboost` |
+| **Hardware** | Any laptop. No GPU needed |
+
+Everything after the setup is tables and models, so once the cohort is cached this chapter runs
+quickly.
+
+**Read section 4 onward in order and do not skip ahead.** The chapter deliberately walks into a data
+leak, gets a perfect score, and then finds the cause. Reading the diagnosis before seeing the
+symptom throws away the part that is actually worth learning.
 """),
 
 ("md", "## Setup"),
@@ -357,17 +374,62 @@ the cohort is too small to hold anything out. The third command in this family, 
 applies a saved model to a feature table that has no labels at all — which is what you would reach
 for once a model is finished and real patients start arriving.
 
+## Recap
+
+| | |
+|---|---|
+| **Building a label** | `squamous` from histology, `dead_2y` from survival time and event. The second one is where the leak came from |
+| **Ranking features** | A univariate screen says which single features separate the groups — a starting point, not a model |
+| **Benchmarking** | Eight models under nested cross-validation, so that feature selection and tuning happen *inside* the fold rather than before it |
+| **The leak** | `dead_2y` was built from `OS_months` and `OS_event`, and both were left in the feature table. The model reconstructed the label exactly, giving AUC 1.000 |
+| **The fix** | Drop every column the label was derived from, then re-run. The result becomes ordinary, which is what a real result looks like |
+| **Selection effects** | The best of eight models is optimistically biased. The winner is partly the winner because it got lucky on this data |
+
+**The transferable skill is the reflex, not the fix.** A perfect score on 59 patients is a bug
+report. The chapter's response to AUC 1.000 was not to celebrate it but to go looking for the
+mechanism, and then to *prove* it by reconstructing the label from the leaked columns.
+
+Notice also that this leak is only easy to catch because it was perfect. Exercise 2 builds the
+dangerous version — a leak just noisy enough to produce a merely impressive number.
+
+And on cohort size: a hold-out set of 18 patients gave AUCs from chance to 0.74 depending only on
+the seed. The problem is **n**, not the method. At this size, report the cross-validated number, its
+spread, and the sentence that the cohort is too small to hold anything out.
+
+**Next:** Chapter 13 runs a complete study end to end on this same cohort and compares the result
+against the published paper — the final question, which is whether the pipeline reproduces at all.
+
 ## Exercises
 
 1. Add `Overall.Stage` as a feature and re-run the mortality benchmark. The AUC will rise. Is that a
    leak, or is stage legitimately known before the outcome? Argue both sides.
+
+   *Hint:* the test is not "does it improve the AUC" but "would this value be available at the
+   moment the prediction is needed". Stage is known at diagnosis, so it passes that test — but it is
+   also the strongest known prognostic factor, so a model using it is no longer demonstrating that
+   the *imaging* features carry information.
+
 2. Construct a leak on purpose: add a column equal to `dead_2y` plus a little noise, and find how
    much noise is needed before the AUC stops being suspicious.
+
+   *Hint:* sweep the noise scale and plot AUC against it. The uncomfortable finding is how much
+   noise a leaked column tolerates while still producing an AUC that looks impressive rather than
+   impossible — which is why a merely *good* result is harder to catch than a perfect one.
+
 3. Run the squamous benchmark with three different `--seed` values. How much does the winning model
    change? What does that say about reporting the best of eight?
+
+   *Hint:* record the whole ranking each time, not just the winner. If the ordering reshuffles
+   between seeds, "the best model" is largely a statement about the seed, and reporting it as a
+   finding is the selection effect section 7 warns about.
+
 4. Raise `--top-features` from 20 to 100 in the hold-out loop. Does the spread across seeds narrow
    or widen? Why would giving the model more features to choose from make a small test set less
    stable rather than more?
+
+   *Hint:* with 59 patients, more candidate features means more chances for one to separate the
+   training set by luck. The selection is itself fitted to the data, so widening it adds variance
+   rather than information.
 
 ## References
 

@@ -15,14 +15,27 @@ fat a person has, from their CT scan.**
 
 Every chapter builds one piece of that final measurement.
 
-| Chapter | What you learn | Why the final measurement needs it |
+| Chapter | What you learn | Why the course needs it |
 |---|---|---|
+| **Part I — Foundations** | | |
 | **1. Exploration** | Open a CT scan, read the information attached to it, understand what the numbers mean | You cannot measure anything until the numbers mean something |
 | **2. Masks and filters** | Select the pixels you care about, and clean up the noise first | Fat and muscle are picked out by their brightness values |
 | **3. Measurement** | Count, label and measure the regions you selected | Areas and averages *are* the body composition numbers |
 | **4. Image comparison** | Compare scans from different people fairly | Two patients are different sizes, so raw numbers cannot be compared directly |
-| **5. Body composition from CT** | Measure muscle and fat at the standard anatomical level | The destination |
-| **6. Body composition from MR** | Do the same with MRI, which separates fat differently | The other way to do it, and why CT is still the usual choice |
+| **5. Patient privacy** | Find, remove and *verify the removal of* identifying information | Before any of this can touch real clinical data |
+| **Part II — Applications** | | |
+| **6. Body composition from CT** | Measure muscle and fat at the standard anatomical level | The destination the first four chapters were building toward |
+| **7. Fat quantification with MR** | Do the same with MRI, which separates fat differently | The other way to do it, and why CT is still the usual choice |
+| **8. PET/CT** | Measure how hard tissue is *working*, not just where it is | Function as well as anatomy |
+| **Part III — Quantitative methods** | | |
+| **9. Radiomics features** | What the hundreds of numbers extracted from a tumor actually are | Knowing which of them survive someone else running your pipeline |
+| **10. Registration** | Align two scans, and catch the failures that report success | Aligning scans is where pipelines break without saying so |
+| **11. Delta radiomics** | Measure change between timepoints, and measure your own noise floor | Change means nothing until you know what change means nothing |
+| **12. Classification** | Benchmark models, and recognize a result that is too good to be true | An implausibly good result is a bug report, not a finding |
+| **13. Reproducing published results** | Run a full study and compare it against the paper | Whether a pipeline reproduces is the question that matters |
+
+Chapters 1 to 5 are the foundations, and they run in order. After those, Part II and Part III can
+be read in any order — each says at the top which earlier chapters it leans on.
 
 ### What is body composition, and why measure it?
 
@@ -60,6 +73,20 @@ By the end of this chapter you will be able to:
 4. Work out which way is up (this is less obvious than it sounds, and getting it wrong is common).
 5. Turn a scan into a PyTorch tensor, ready for machine learning.
 6. Look at a 3D scan from any direction, without distorting it.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Nothing — this is the first chapter |
+| **You should know** | Basic Python, and what a NumPy array is |
+| **Downloads** | One Pancreas-CT subject, about 40 MB |
+| **Longest wait** | The download in section 1, roughly 20 seconds |
+| **Beyond the setup cell** | Nothing extra to install |
+| **Hardware** | Any laptop. No GPU needed |
+
+Run the cells in order from the top — each one uses names defined by the one before it. If a cell
+fails partway through the chapter, re-run from the setup cell rather than retrying it in place.
 """),
 
 ("md", """\
@@ -485,17 +512,56 @@ The side view is how Chapter 6 finds where to measure. Body composition is measu
 place — the level of the third lumbar vertebra, partway down the spine — and this is the view in
 which you can count vertebrae to find it.
 
+## Recap
+
+The six things promised at the top, and where each of them landed:
+
+| | |
+|---|---|
+| **A scan is a folder of slices** | `md.load_series` reads it into `vol[slice, row, column]` |
+| **The header is what makes it a measurement** | `PixelSpacing` turns pixel counts into centimeters; ask for fields with a fallback, because some are empty |
+| **Hounsfield units** | `stored × RescaleSlope + RescaleIntercept`; water 0, air −1000, fat −190 to −30, muscle −29 to +150 |
+| **Orientation** | `ImageOrientationPatient` says which way rows and columns run — read it, never assume it |
+| **Tensors** | Window with *fixed* HU limits, not each image's own range, or the same tissue gets a different number in every scan |
+| **Three directions** | Axial, coronal and sagittal are the same array cut three ways; pass `aspect` or the picture is stretched |
+
+Two of these are silent-failure traps, which is why they got the most space: an upside-down scan and
+a scan that skipped the Hounsfield conversion both look completely reasonable, and every number you
+compute from either is wrong.
+
+**Next:** Chapter 2 takes this scan, whose numbers now mean something, and turns those numbers into
+selections — deciding for each pixel whether it is fat, muscle, or not even part of the patient.
+
 ## Exercises
 
 1. Run `md.fetch_pancreas_ct(1)` to fetch a second patient. Compare the pixel spacing and the field
    of view with the first. If you measured something in pixels, would the two patients be
    comparable? What if you measured in square centimeters?
+
+   *Hint:* call `md.load_series` on both and print `spacing` and `shape` for each. Section 6's
+   field-of-view calculation is the one to repeat.
+
 2. Work out the tissue percentages for the very first and very last slice of `vol`. Why is there so
    much more lung in one of them?
+
+   *Hint:* reuse the `TISSUE` loop from section 2 with `vol[0]` and `vol[-1]`. Then look at the two
+   slices — the answer is anatomical, not numerical.
+
 3. Take the correction in section 3 back out and plot the coronal view without it. What changes,
    and would you have noticed if nobody had told you?
+
+   *Hint:* `md.load_series` already applied the fix, so undo it with `vol[:, ::-1, :]`. The point of
+   the exercise is the second question.
+
 4. Skip the Hounsfield conversion on purpose: calculate the "fat percentage" straight from
-   `ds.pixel_array`. How wrong is the answer, and why is it wrong by so much?
+   `ds.pixel_array`, and compare it with the answer from `hu`.
+
+   *Hint:* on **this** scan the two agree exactly, because its header says `RescaleSlope 1` and
+   `RescaleIntercept 0` — the stored numbers are already Hounsfield units. That is the exercise. You
+   cannot tell from the picture, or from the answer looking sensible, whether the conversion
+   mattered; only the header says. Now simulate a scanner that stores it differently
+   (`raw = hu + 1024`, intercept −1024, which is a common convention) and redo the count without
+   converting. That is the size of the mistake you avoid by reading two header fields.
 
 ## References
 

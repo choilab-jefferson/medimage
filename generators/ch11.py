@@ -27,6 +27,23 @@ By the end you will be able to:
 2. Compute delta features with `qradiomics.delta`.
 3. **Measure your own noise floor** using an organ that should not have changed.
 4. Say whether an observed change is larger than that floor — the only thing that makes it a finding.
+
+### Before you start
+
+| | |
+|---|---|
+| **Builds on** | Chapter 9 (what a feature is) and Chapter 10 (why registration matters here) |
+| **Downloads** | Two CT timepoints for each of six ACRIN patients — several hundred MB |
+| **Longest wait** | Section 1. It downloads that cohort *and* runs a segmentation network twelve times: **ten to twenty minutes on a cold start** |
+| **Beyond the setup cell** | `pyradiomics` (from git), `qradiomics`, `SimpleITK`, `TotalSegmentator` |
+| **Hardware** | **Use a GPU runtime.** Twelve segmentation runs is where the time goes |
+
+This is the slowest cell in Part III to *run*, as opposed to Chapter 9's which is the slowest to
+download. Start it, then read sections 2 and 3 while it works.
+
+The chapter deliberately does **not** register the two timepoints. That is not an oversight — the
+whole point is to measure what independent re-segmentation costs you, so that Chapter 10's machinery
+has a number attached to what it saves.
 """),
 
 ("md", "## Setup"),
@@ -340,16 +357,59 @@ tumor is not a signal, no matter how good its p-value looks.
 - **The scans are months apart** and were not acquired for this purpose; contrast phase and breath
   hold differ.
 
+## Recap
+
+| | |
+|---|---|
+| **Delta radiomics** | `feature(after) − feature(before)`. Each patient is their own control, so scanner and body size largely cancel |
+| **The table** | Indexed by patient *and* timepoint, which is what makes the subtraction well defined |
+| **The noise floor** | Run the identical pipeline on an organ that should not have changed. Whatever it reports is change your pipeline invented |
+| **A finding** | An observed change *larger than that floor*. Below it, the number means nothing regardless of its p-value |
+
+The three consequences, stated as rules:
+
+- **Measure the floor, always.** A delta study with no control organ has not established that its
+  deltas mean anything.
+- **Segment once where you can.** Most of the floor here came from re-segmenting independently at
+  each timepoint. Registering and propagating a single contour — Chapter 10 — removes that source,
+  at the cost of assuming the anatomy did not deform.
+- **Prefer the stable features.** Chapter 9 already predicted which ones those are: shape survives,
+  texture does not. A texture feature that moves 60% on a control organ cannot support a 40% claim
+  about a tumor.
+
+**Next:** Chapter 12 takes a feature table and asks a yes-or-no clinical question of it — and runs
+into a different way of fooling yourself, one that produces a perfect score instead of a noisy one.
+
 ## Exercises
 
 1. Compute the floor separately for shape features and for texture features. How different are the
    two answers, and which would you build a study on?
+
+   *Hint:* the feature names carry their family, so `shape` and `glcm` can be selected by matching
+   on the column name. Chapter 9 predicts the direction of the result — this exercise measures it on
+   an organ that genuinely did not change.
+
 2. Register each patient's second scan to the first using Chapter 10's method, propagate the
    baseline liver mask instead of re-segmenting, and re-measure the floor. How much does it drop?
+
+   *Hint:* the most valuable exercise in the chapter, and the longest. Propagate with `order=0`.
+   What remains after the drop is the floor from acquisition alone — breathing, contrast phase,
+   scanner — which registration cannot remove.
+
 3. Add a third control — the spleen, say — and check whether the two controls agree. If they do not,
    what does that tell you?
+
+   *Hint:* the limitations already name the suspect — these are lung cancer patients and the liver
+   is a common metastatic site. Two controls disagreeing means at least one is not a control, so
+   this is a check on the study design rather than on the code.
+
 4. `compute_trend` fits a slope across more than two timepoints. What extra assumption does a linear
    trend make that a simple difference does not?
+
+   *Hint:* a difference is agnostic about the path between the two points; a slope asserts the
+   change is steady. Consider a tumor that shrinks then regrows to its starting size — the
+   difference reports zero, and so does the slope, for different reasons and with different
+   consequences.
 
 ## References
 
