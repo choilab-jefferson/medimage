@@ -34,12 +34,13 @@ By the end you will be able to:
 |---|---|
 | **Builds on** | Chapter 9 (what a feature is) and Chapter 10 (why registration matters here) |
 | **Downloads** | Two CT timepoints for each of six ACRIN patients — several hundred MB |
-| **Longest wait** | Section 1. It downloads that cohort *and* runs a segmentation network twelve times: **ten to twenty minutes on a cold start** |
+| **Longest wait** | Section 1, by a wide margin. It downloads that cohort *and* runs a segmentation network twelve times: measured at **about 50 minutes** on a CPU-only machine with the scans already downloaded |
 | **Beyond the setup cell** | `pyradiomics` (from git), `qradiomics`, `SimpleITK`, `TotalSegmentator` |
 | **Hardware** | **Use a GPU runtime.** Twelve segmentation runs is where the time goes |
 
-This is the slowest cell in Part III to *run*, as opposed to Chapter 9's which is the slowest to
-download. Start it, then read sections 2 and 3 while it works.
+That makes it the slowest cell in Part III to *run* — six times Chapter 12's whole runtime — as
+opposed to Chapter 9's, which is the slowest to download. Start it, then read sections 2 and 3
+while it works.
 
 The chapter deliberately does **not** register the two timepoints. That is not an oversight — the
 whole point is to measure what independent re-segmentation costs you, so that Chapter 10's machinery
@@ -90,8 +91,10 @@ of two visits for a handful of patients.
 Two organs are segmented on every scan: the **heart**, and the **liver** as a control. More on why
 the control matters shortly.
 
-This cell downloads several hundred megabytes and runs a segmentation network twelve times. On a
-cold start expect ten to twenty minutes; afterwards it reads from the cache.
+This cell downloads several hundred megabytes and runs a segmentation network twelve times. Twelve
+runs is the whole cost: on a CPU-only machine, with the scans already downloaded, this took **about
+50 minutes**. A GPU runtime is strongly advised. Afterwards it reads from the cache and returns in
+under a minute.
 """),
 ("code", """\
 series = md._get_json(f"{md.NBIA}/getSeries?Collection=ACRIN-NSCLC-FDG-PET")
