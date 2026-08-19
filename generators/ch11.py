@@ -54,8 +54,11 @@ import sys
 
 # pyradiomics is the default extraction engine, and an optional extra of
 # qradiomics: PyPI ships no wheel for Python 3.10+, so it comes from git.
+# The commit is pinned because master moves and the feature values move with
+# it — an unpinned install makes this chapter's numbers depend on the day.
 subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                "pyradiomics @ git+https://github.com/AIM-Harvard/pyradiomics.git",
+                "pyradiomics @ git+https://github.com/AIM-Harvard/"
+                "pyradiomics.git@8ed579383b44806651c463d5e691f3b2b57522ab",
                 "qradiomics", "SimpleITK"], check=True)
 print("installed")
 """),
