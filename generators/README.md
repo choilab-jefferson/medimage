@@ -34,6 +34,12 @@ carries each executed code cell's outputs, execution count and metadata across t
 The line it prints says which happened: `wrote ...: 39 cells (16 code, 16 outputs kept)`. If the
 kept count drops, you changed code, and that notebook needs re-executing.
 
+Source text is the only key the two notebooks share, so **two code cells with identical source
+cannot be told apart** and neither keeps its outputs. Given three identical cells and a generator
+that now emits two, nothing in the text says which one was removed, and pairing them in file order
+would attach the wrong figure. Both come back empty instead, the kept count drops, and re-executing
+restores them. No chapter currently has a duplicated code cell.
+
 To confirm the two have not drifted, just regenerate in place and check `git status`:
 
 ```bash
