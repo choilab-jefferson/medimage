@@ -351,17 +351,24 @@ print(f"mean muscle density {slice_hu[muscle].mean():.1f} HU"
       "   (lower means more fat inside the muscle)")
 """),
 ("code", """\
+from matplotlib.patches import Patch
+
 overlay = np.zeros(slice_hu.shape + (3,))
-overlay[muscle] = [0.85, 0.15, 0.15]     # red
-overlay[sat] = [1.00, 0.80, 0.20]        # yellow
-overlay[vat] = [0.20, 0.55, 0.95]        # blue
+overlay[muscle] = [1.00, 0.22, 0.35]     # vibrant crimson-coral
+overlay[sat] = [1.00, 0.82, 0.08]        # bright gold
+overlay[vat] = [0.00, 0.85, 1.00]        # electric cyan
 
 fig, axes = plt.subplots(1, 2, figsize=(12, 5.6))
 axes[0].imshow(slice_hu, cmap="gray", vmin=-160, vmax=240)
-axes[0].contour(cavity, colors="white", linewidths=1.0, linestyles="--")
+axes[0].contour(cavity, colors="#00E5FF", linewidths=1.5, linestyles="--")
 axes[0].set_title(f"mid-L3 slice ({L3_SLICE}) with the cavity boundary", fontsize=10)
 axes[1].imshow(slice_hu, cmap="gray", vmin=-160, vmax=240)
-axes[1].imshow(overlay, alpha=np.where(muscle | sat | vat, 0.55, 0.0))
+axes[1].imshow(overlay, alpha=np.where(muscle | sat | vat, 0.62, 0.0))
+axes[1].legend(handles=[
+    Patch(facecolor=(1.00, 0.22, 0.35), label=f"muscle ({muscle_area:.0f} cm$^2$)"),
+    Patch(facecolor=(1.00, 0.82, 0.08), label=f"SAT ({sat_area:.0f} cm$^2$)"),
+    Patch(facecolor=(0.00, 0.85, 1.00), label=f"VAT ({vat_area:.0f} cm$^2$)"),
+], loc="upper right", fontsize=8.5, facecolor="black", edgecolor="#475569", labelcolor="white", framealpha=0.82)
 axes[1].set_title(f"muscle {muscle_area:.0f} | SAT {sat_area:.0f} | VAT {vat_area:.0f} cm$^2$",
                   fontsize=10)
 for ax in axes:

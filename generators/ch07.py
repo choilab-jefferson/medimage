@@ -261,30 +261,35 @@ for subject, mean_ff, median_ff in rows:
 print("\\nclinical threshold: fat fraction of 5% or more indicates hepatic steatosis")
 """),
 ("code", """\
-fig, axes = plt.subplots(1, 2, figsize=(11, 4.6))
+fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.6))
 
-for subject, color in [(1, "tab:blue"), (5, "tab:red")]:
+for subject, fill_col, edge_col in [(1, "#0072B2", "#004C78"), (5, "#E11D48", "#9F1239")]:
     ip_s, op_s, ref_s, _ = md.load_chaos(subject)
     ip_s, op_s = ip_s.astype(np.float32), op_s.astype(np.float32)
     ff_s = np.divide(ip_s - op_s, 2 * ip_s, out=np.zeros_like(ip_s), where=ip_s > 20)
     values = np.clip(ff_s[ref_s == 63], 0, 0.5)
-    axes[0].hist(values, bins=60, range=(0, 0.5), alpha=0.55,
-                 label=f"subject {subject} (mean {values.mean():.1%})", color=color, density=True)
+    axes[0].hist(values, bins=60, range=(0, 0.5), alpha=0.6,
+                 label=f"subject {subject} (mean {values.mean():.1%})",
+                 color=fill_col, edgecolor=edge_col, linewidth=0.4, density=True)
 
-axes[0].axvline(0.05, color="black", linestyle="--", linewidth=1)
-axes[0].text(0.055, axes[0].get_ylim()[1] * 0.85, "5% threshold", fontsize=8)
+axes[0].axvline(0.05, color="#0F172A", linestyle="--", linewidth=1.4)
+axes[0].text(0.058, axes[0].get_ylim()[1] * 0.85, "5% steatosis threshold",
+             fontsize=8.5, fontweight="bold", color="#0F172A")
 axes[0].set_xlabel("liver fat fraction")
 axes[0].set_ylabel("density")
 axes[0].set_title("A normal liver and a fatty one", fontsize=10)
-axes[0].legend(fontsize=8)
+axes[0].grid(True, linestyle=":", alpha=0.35)
+axes[0].legend(fontsize=8.5)
 
 ip_s, op_s, ref_s, _ = md.load_chaos(5)
 ip_s, op_s = ip_s.astype(np.float32), op_s.astype(np.float32)
 ff_s = np.divide(ip_s - op_s, 2 * ip_s, out=np.zeros_like(ip_s), where=ip_s > 20)
 m = ip_s.shape[0] // 2
 axes[1].imshow(ip_s[m], cmap="gray")
-axes[1].imshow(np.where(ref_s[m] == 63, np.clip(ff_s[m], 0, 0.5), np.nan),
-               cmap="inferno", vmin=0, vmax=0.4, alpha=0.85)
+im_ff = axes[1].imshow(np.where(ref_s[m] == 63, np.clip(ff_s[m], 0, 0.5), np.nan),
+                       cmap="plasma", vmin=0, vmax=0.4, alpha=0.9)
+axes[1].contour(ref_s[m] == 63, colors="#00E5FF", linewidths=1.0)
+plt.colorbar(im_ff, ax=axes[1], fraction=0.046, label="fat fraction")
 axes[1].set_title("subject 5: fat fraction inside the liver", fontsize=10)
 axes[1].axis("off")
 

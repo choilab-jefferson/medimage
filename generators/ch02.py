@@ -80,16 +80,23 @@ counts, edges = np.histogram(sl, bins=400, range=(-1100, 300))
 centers = (edges[:-1] + edges[1:]) / 2
 
 fig, ax = plt.subplots(figsize=(11, 4))
-ax.fill_between(centers, counts, step="mid", alpha=0.65)
+ax.fill_between(centers, counts, step="mid", color="#3B82F6", alpha=0.35)
+ax.step(centers, counts, where="mid", color="#1D4ED8", linewidth=1.1)
 ax.set_yscale("log")               # log scale, or the air spike hides everything else
 ax.set_xlabel("Hounsfield units")
 ax.set_ylabel("number of pixels (log scale)")
+ax.grid(True, linestyle=":", alpha=0.35)
 
-for lo, hi, name, color in [(-190, -30, "fat", "goldenrod"),
-                            (-29, 150, "muscle and organs", "firebrick")]:
-    ax.axvspan(lo, hi, color=color, alpha=0.18)
-    ax.text((lo + hi) / 2, counts.max(), name, ha="center", va="top",
-            fontsize=9, color=color)
+for lo, hi, name, fill, text_col in [
+    (-190, -30, "fat", "#F59E0B", "#B45309"),
+    (-29, 150, "muscle and organs", "#E11D48", "#BE123C"),
+]:
+    ax.axvspan(lo, hi, color=fill, alpha=0.25)
+    ax.axvline(lo, color=text_col, linestyle="--", linewidth=1.0, alpha=0.7)
+    ax.axvline(hi, color=text_col, linestyle="--", linewidth=1.0, alpha=0.7)
+    ax.text((lo + hi) / 2, counts.max() * 0.75, name, ha="center", va="top",
+            fontsize=9.5, fontweight="bold", color=text_col,
+            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.85, edgecolor=fill))
 
 ax.set_title("How the pixel values are distributed in one slice")
 plt.tight_layout()
@@ -237,7 +244,12 @@ for ax, (kernel, title) in zip(axes, [(mean_kernel, "averaging kernel\\n(smooths
                                       (edge_kernel, "difference kernel\\n(finds edges)")]):
     ax.imshow(kernel, cmap="RdBu_r", vmin=-2, vmax=2)
     for (i, j), v in np.ndenumerate(kernel):
-        ax.text(j, i, f"{v:.2f}".rstrip("0").rstrip("."), ha="center", va="center", fontsize=10)
+        fg = "white" if abs(v) >= 1.5 else "#0F172A"
+        ax.text(j, i, f"{v:.2f}".rstrip("0").rstrip("."), ha="center", va="center",
+                fontsize=10.5, fontweight="bold", color=fg)
+    for g in (0.5, 1.5):
+        ax.axhline(g, color="#CBD5E1", linewidth=1.2)
+        ax.axvline(g, color="#CBD5E1", linewidth=1.2)
     ax.set_title(title, fontsize=10)
     ax.set_xticks([]); ax.set_yticks([])
 plt.tight_layout()
@@ -314,12 +326,14 @@ the grain down but softens the step into a slope. The median keeps the step squa
 ("code", """\
 row = sl.shape[0] // 2
 
-fig, ax = plt.subplots(figsize=(11, 3.2))
-for img, label in [(sl, "original"), (gauss, "Gaussian"), (median, "median")]:
-    ax.plot(img[row, 150:350], label=label, linewidth=1.2)
+fig, ax = plt.subplots(figsize=(11, 3.4))
+ax.plot(sl[row, 150:350], label="original", color="#64748B", linewidth=1.1, alpha=0.75)
+ax.plot(gauss[row, 150:350], label="Gaussian (sigma=2)", color="#0072B2", linewidth=2.2)
+ax.plot(median[row, 150:350], label="median (5x5)", color="#E11D48", linewidth=2.0, linestyle="--")
 ax.set_title("One row of pixels across the body")
 ax.set_ylabel("HU")
 ax.set_xlabel("position along the row")
+ax.grid(True, linestyle=":", alpha=0.4)
 ax.legend(fontsize=9)
 plt.tight_layout()
 plt.show()
@@ -376,7 +390,9 @@ axes[0].imshow(gx, cmap="RdBu_r", vmin=-400, vmax=400)
 axes[0].set_title("change left to right", fontsize=10)
 axes[1].imshow(gy, cmap="RdBu_r", vmin=-400, vmax=400)
 axes[1].set_title("change top to bottom", fontsize=10)
-axes[2].imshow(np.where(body, strength, np.nan), cmap="magma", vmin=0, vmax=600)
+edge_cmap = plt.get_cmap("inferno").copy()
+edge_cmap.set_bad("black")
+axes[2].imshow(np.where(body, strength, np.nan), cmap=edge_cmap, vmin=0, vmax=600)
 axes[2].set_title("edge strength", fontsize=10)
 for ax in axes:
     ax.axis("off")
@@ -407,6 +423,8 @@ Here is the whole pipeline as one reusable function. The order matters: smooth, 
 patient, then select, then tidy up.
 """),
 ("code", """\
+from matplotlib.patches import Patch
+
 def compartment(slice_hu, lo, hi, sigma=2, cleanup=3):
     \"\"\"Select tissue between lo and hi HU, inside the body, cleaned up.\"\"\"
     smoothed = ndi.gaussian_filter(slice_hu.astype(np.float32), sigma)
@@ -420,12 +438,16 @@ fat_mask = compartment(sl, -190, -30)
 soft_mask = compartment(sl, -29, 150)
 
 overlay = np.zeros(sl.shape + (3,))
-overlay[fat_mask] = [1.0, 0.78, 0.15]      # yellow
-overlay[soft_mask] = [0.80, 0.15, 0.15]    # red
+overlay[fat_mask] = [1.0, 0.82, 0.05]       # bright gold
+overlay[soft_mask] = [0.95, 0.22, 0.30]     # vibrant coral-red
 
 fig, ax = plt.subplots(figsize=(6.4, 6.4))
 ax.imshow(sl, cmap="gray", vmin=-160, vmax=240)
-ax.imshow(overlay, alpha=np.where(fat_mask | soft_mask, 0.45, 0.0))
+ax.imshow(overlay, alpha=np.where(fat_mask | soft_mask, 0.58, 0.0))
+ax.legend(handles=[
+    Patch(facecolor=(1.0, 0.82, 0.05), label=f"fat ({fat_mask.sum() * px_area_cm2:.0f} cm$^2$)"),
+    Patch(facecolor=(0.95, 0.22, 0.30), label=f"muscle & organs ({soft_mask.sum() * px_area_cm2:.0f} cm$^2$)"),
+], loc="upper right", fontsize=8.5, facecolor="black", edgecolor="#475569", labelcolor="white", framealpha=0.8)
 ax.set_title(f"fat {fat_mask.sum() * px_area_cm2:.0f} cm$^2$   |   "
              f"muscle and organs {soft_mask.sum() * px_area_cm2:.0f} cm$^2$")
 ax.axis("off")

@@ -166,8 +166,10 @@ for ax, timepoint in zip(axes, (0, 1)):
     ax.set_xlabel("x (mm)")
 
     center = (extent[2] + extent[3]) / 2
-    ax.axhline(center, color="tab:orange", linestyle="--", linewidth=1.2)
-    ax.text(extent[0] + 10, center + 12, "volume center", color="tab:orange", fontsize=8)
+    ax.axhline(center, color="#00E5FF", linestyle="--", linewidth=1.6)
+    ax.text(extent[0] + 12, center + 16, f"volume center ({center:.0f} mm)",
+            color="#00E5FF", fontsize=8.5, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.2", facecolor="black", alpha=0.75, edgecolor="none"))
 
 for ax in axes:
     ax.set_ylim(min(limits), max(limits))
@@ -505,16 +507,18 @@ print(f"{'method':<46}{'TRE mm':>9}")
 for name, value in summary:
     print(f"{name:<46}{value:>9.2f}")
 
-# Color by the value itself, so lower error always reads as better.
+# Distinct high-contrast colors by error tier (crimson -> amber -> emerald)
 values = np.array([s[1] for s in summary])
-span = float(np.ptp(values)) or 1.0\nshade = plt.cm.RdYlGn_r((values - values.min()) / span)
+palette = ["#E11D48" if v > 10 else ("#F59E0B" if v > 1 else "#059669") for v in values[::-1]]
+edges = ["#9F1239" if v > 10 else ("#B45309" if v > 1 else "#047857") for v in values[::-1]]
 
 fig, ax = plt.subplots(figsize=(9, 3.2))
-ax.barh([s[0] for s in summary][::-1], values[::-1], color=shade[::-1], alpha=0.9)
-ax.set_xlim(0, values.max() * 1.14)
+ax.barh([s[0] for s in summary][::-1], values[::-1], color=palette, edgecolor=edges, linewidth=0.8, alpha=0.9)
+ax.set_xlim(0, values.max() * 1.22)
+ax.grid(axis="x", linestyle=":", alpha=0.4)
 ax.set_xlabel("target registration error (mm, lower is better)")
-for y, v in enumerate(values[::-1]):
-    ax.text(v + values.max() * 0.015, y, f"{v:.2f}", va="center", fontsize=9)
+for y, (v, col) in enumerate(zip(values[::-1], edges)):
+    ax.text(v + values.max() * 0.015, y, f"{v:.2f} mm", va="center", fontsize=9, fontweight="bold", color=col)
 plt.tight_layout()
 plt.show()
 """),

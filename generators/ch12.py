@@ -233,18 +233,21 @@ comparison = (mortality_results[["model", "oof_auc"]]
 
 print(comparison.to_string(index=False))
 
-fig, ax = plt.subplots(figsize=(9, 4))
+fig, ax = plt.subplots(figsize=(9, 4.2))
 y = np.arange(len(comparison))
-ax.barh(y - 0.2, comparison.with_leak, height=0.4, color="tab:red", alpha=0.85,
-        label="with the leak")
-ax.barh(y + 0.2, comparison.leak_removed, height=0.4, color="tab:blue", alpha=0.85,
-        label="leak removed")
-ax.axvline(0.5, color="black", linestyle="--", linewidth=1)
-ax.text(0.505, len(comparison) - 0.4, "chance", fontsize=8)
+ax.barh(y - 0.19, comparison.with_leak, height=0.38, color="#E11D48", edgecolor="#9F1239",
+        linewidth=0.7, alpha=0.9, label="with the leak")
+ax.barh(y + 0.19, comparison.leak_removed, height=0.38, color="#0072B2", edgecolor="#004C78",
+        linewidth=0.7, alpha=0.9, label="leak removed")
+ax.axvline(0.5, color="#0F172A", linestyle="--", linewidth=1.3)
+ax.text(0.512, len(comparison) - 0.85, "chance (0.50)", fontsize=8.5, fontweight="bold", color="#0F172A",
+        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#CBD5E1", alpha=0.92))
 ax.set_yticks(y, comparison.model)
+ax.set_xlim(0, 1.08)
+ax.grid(axis="x", linestyle=":", alpha=0.4)
 ax.set_xlabel("out-of-fold AUC")
 ax.set_title("The same models, before and after removing two columns")
-ax.legend(fontsize=8)
+ax.legend(fontsize=8.5, loc="lower right")
 plt.tight_layout()
 plt.show()
 """),
@@ -339,13 +342,16 @@ print()
 print(splits.round(3).to_string(index=False))
 """),
 ("code", """\
-fig, ax = plt.subplots(figsize=(8, 4))
-ax.plot(splits.seed, splits.cv_auc, "o-", color="tab:blue",
+fig, ax = plt.subplots(figsize=(8.2, 4.0))
+ax.plot(splits.seed, splits.cv_auc, "o-", color="#0072B2", linewidth=2.2,
+        markersize=7, markeredgecolor="white", markeredgewidth=1.2,
         label="cross-validated, on the training patients")
-ax.plot(splits.seed, splits.holdout_auc, "s-", color="tab:red",
+ax.plot(splits.seed, splits.holdout_auc, "s-", color="#E11D48", linewidth=2.2,
+        markersize=7, markeredgecolor="white", markeredgewidth=1.2,
         label="hold-out, on the unseen patients")
-ax.axhline(0.5, color="black", linestyle="--", linewidth=1)
-ax.text(0.05, 0.51, "chance", fontsize=8)
+ax.axhline(0.5, color="#0F172A", linestyle="--", linewidth=1.2)
+ax.text(0.05, 0.512, "chance (0.50)", fontsize=8.5, fontweight="bold", color="#0F172A")
+ax.grid(True, linestyle=":", alpha=0.4)
 ax.set_xlabel("random seed — the only thing that differs between these six runs")
 ax.set_ylabel("AUC")
 ax.set_ylim(0.3, 0.9)

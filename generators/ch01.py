@@ -401,11 +401,14 @@ you add a dimension you are stacking the previous thing.
 By convention the new dimension goes first, so a scan is indexed `volume[slice, row, column]`.
 """),
 ("code", """\
-fig, ax = plt.subplots(figsize=(7, 3.2))
-for i, offset in enumerate([0, 0.9, 1.8, 2.7]):
+fig, ax = plt.subplots(figsize=(7.2, 3.2))
+palette = [("#E0F2FE", "#0284C7"), ("#FEF3C7", "#D97706"),
+           ("#D1FAE5", "#059669"), ("#FCE7F3", "#DB2777")]
+for i, (offset, (fill, edge)) in enumerate(zip([0, 0.9, 1.8, 2.7], palette)):
     ax.add_patch(plt.Rectangle((offset, -offset * 0.28), 1.5, 1.0,
-                               facecolor=f"C{i}", alpha=0.55, edgecolor="black"))
-    ax.text(offset + 0.12, -offset * 0.28 + 0.12, f"slice {i}", fontsize=9)
+                               facecolor=fill, alpha=0.92, edgecolor=edge, linewidth=2.2))
+    ax.text(offset + 0.14, -offset * 0.28 + 0.14, f"slice {i}",
+            fontsize=9.5, fontweight="bold", color=edge)
 ax.set_xlim(-0.3, 4.6)
 ax.set_ylim(-1.2, 1.3)
 ax.set_title("A scan is a stack of slices:  volume[slice, row, column]")

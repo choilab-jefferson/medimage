@@ -296,24 +296,33 @@ Reporting the heart number alone would have looked like a result. The control is
 whether it is one.
 """),
 ("code", """\
-fig, axes = plt.subplots(1, 2, figsize=(13, 4))
+fig, axes = plt.subplots(1, 2, figsize=(13, 4.2))
 
 axes[0].hist([liver_change.dropna() * 100, heart_change.dropna() * 100], bins=25,
-             range=(0, 100), label=["liver (control)", "heart"],
-             color=["tab:blue", "tab:red"], alpha=0.8)
-axes[0].axvline(liver_change.median() * 100, color="tab:blue", linestyle="--", linewidth=1.5)
+             range=(0, 100), label=["liver (control)", "heart (target)"],
+             color=["#0072B2", "#E11D48"], edgecolor=["#004C78", "#9F1239"],
+             linewidth=0.5, alpha=0.85)
+axes[0].axvline(liver_change.median() * 100, color="#004C78", linestyle="--", linewidth=1.6)
 axes[0].set_xlabel("median relative change per feature (%)")
 axes[0].set_ylabel("features")
 axes[0].set_title("The control moves as much as the target", fontsize=10)
-axes[0].legend(fontsize=8)
+axes[0].grid(True, linestyle=":", alpha=0.35)
+axes[0].legend(fontsize=8.5)
 
 family = {}
 for column in feature_columns:
     kind = column.split("_")[1]
     family.setdefault(kind, []).append(liver_change.get(column, np.nan))
 order = sorted(family, key=lambda k: -np.nanmedian(family[k]))
-axes[1].barh(order[::-1], [np.nanmedian(family[k]) * 100 for k in order][::-1],
-             color="tab:blue", alpha=0.8)
+fam_vals = [np.nanmedian(family[k]) * 100 for k in order][::-1]
+fam_names = order[::-1]
+fam_cols = ["#059669" if k == "shape" else ("#D97706" if k == "firstorder" else "#E11D48") for k in fam_names]
+fam_edges = ["#047857" if k == "shape" else ("#B45309" if k == "firstorder" else "#9F1239") for k in fam_names]
+axes[1].barh(fam_names, fam_vals, color=fam_cols, edgecolor=fam_edges, linewidth=0.8, alpha=0.88)
+axes[1].set_xlim(0, max(fam_vals) * 1.15)
+axes[1].grid(axis="x", linestyle=":", alpha=0.35)
+for y, (v, col) in enumerate(zip(fam_vals, fam_edges)):
+    axes[1].text(v + max(fam_vals) * 0.015, y, f"{v:.1f}%", va="center", fontsize=8.5, fontweight="bold", color=col)
 axes[1].set_xlabel("median change on the control organ (%)")
 axes[1].set_title("Which features are noisiest", fontsize=10)
 

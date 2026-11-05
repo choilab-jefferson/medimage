@@ -303,11 +303,17 @@ print("focal uptake leaves the mean low but produces a hot spot.")
 """),
 ("code", """\
 fig, ax = plt.subplots(figsize=(9, 3.6))
-ax.hist(values, bins=80, range=(0, 8), color="tab:red", alpha=0.7)
-ax.axvline(np.median(pet[liver]), color="black", linestyle="--", linewidth=1.2)
-ax.text(np.median(pet[liver]) + 0.1, ax.get_ylim()[1] * 0.8, "liver reference", fontsize=8)
-ax.axvline(2.5, color="tab:blue", linestyle=":", linewidth=1.2)
-ax.text(2.6, ax.get_ylim()[1] * 0.6, "SUV 2.5", fontsize=8, color="tab:blue")
+ax.hist(values, bins=80, range=(0, 8), color="#E11D48", edgecolor="#9F1239", linewidth=0.35, alpha=0.8)
+liver_ref = float(np.median(pet[liver]))
+ax.axvline(liver_ref, color="#0F172A", linestyle="--", linewidth=1.6)
+ax.text(liver_ref - 0.12, ax.get_ylim()[1] * 0.86, f"liver reference ({liver_ref:.2f})",
+        ha="right", fontsize=8.5, fontweight="bold", color="#0F172A",
+        bbox=dict(boxstyle="round,pad=0.22", fc="white", ec="#CBD5E1", alpha=0.92))
+ax.axvline(2.5, color="#0072B2", linestyle=":", linewidth=1.8)
+ax.text(2.62, ax.get_ylim()[1] * 0.65, "SUV 2.5 threshold",
+        fontsize=8.5, fontweight="bold", color="#0072B2",
+        bbox=dict(boxstyle="round,pad=0.22", fc="white", ec="#BAE6FD", alpha=0.92))
+ax.grid(True, linestyle=":", alpha=0.35)
 ax.set_xlabel("SUV")
 ax.set_ylabel("voxels")
 ax.set_title("Distribution of FDG uptake inside the heart")

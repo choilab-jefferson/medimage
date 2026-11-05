@@ -243,11 +243,14 @@ fig, ax = plt.subplots(figsize=(9, 4))
 names = [r[0] for r in rows]
 values = [np.nanmedian(r[1]) for r in rows]
 pcts = [v * 100 for v in values][::-1]
-colors = ["tab:red" if v > 0.01 else "tab:green" for v in values]
-ax.barh(names[::-1], pcts, color=colors[::-1], alpha=0.8)
-ax.set_xlim(0, max(pcts) * 1.12)
-for y, p in enumerate(pcts):
-    ax.text(p + max(pcts) * 0.012, y, f"{p:.1f}%", va="center", fontsize=9)
+colors = ["#E11D48" if v > 0.01 else "#059669" for v in values][::-1]
+edges = ["#9F1239" if v > 0.01 else "#047857" for v in values][::-1]
+ax.barh(names[::-1], pcts, color=colors, edgecolor=edges, linewidth=0.8, alpha=0.88)
+ax.set_xlim(0, max(pcts) * 1.15)
+ax.grid(axis="x", linestyle=":", alpha=0.4)
+for y, (p, col) in enumerate(zip(pcts, edges)):
+    label = f"{p:.1f}%" if p > 0.1 else "0.0% (unchanged)"
+    ax.text(p + max(pcts) * 0.015, y, label, va="center", fontsize=9, fontweight="bold", color=col)
 ax.set_xlabel("median change in feature value when bin width goes from 25 to 10 (%)")
 ax.set_title("Which features survive a change of preprocessing")
 plt.tight_layout()
@@ -339,16 +342,17 @@ ibsi_fams = [("GLCM (6 IBSI modes)", 150), ("GLRLM (6 IBSI modes)", 96), ("Inten
 leg_fams = [("2D slice stats", 32), ("3D Intensity", 19), ("3D Geometry", 16), ("3D GLCM", 11), ("3D GLRLM", 11), ("3D Shape", 8)]
 
 fig, axes = plt.subplots(1, 2, figsize=(11.5, 3.4))
-for ax, data, title, color in [
-    (axes[0], ibsi_fams, "IBSI-1 Standardized (270/270 phantom parity)", "tab:blue"),
-    (axes[1], leg_fams, "Simultaneous Legacy rtools (97 C++-exact)", "tab:purple"),
+for ax, data, title, fill_col, edge_col in [
+    (axes[0], ibsi_fams, "IBSI-1 Standardized (270/270 phantom parity)", "#0072B2", "#004C78"),
+    (axes[1], leg_fams, "Simultaneous Legacy rtools (97 C++-exact)", "#009E73", "#046A4E"),
 ]:
     labels_f = [d[0] for d in data][::-1]
     counts_f = [d[1] for d in data][::-1]
-    ax.barh(labels_f, counts_f, color=color, alpha=0.85)
+    ax.barh(labels_f, counts_f, color=fill_col, edgecolor=edge_col, linewidth=0.8, alpha=0.88)
     ax.set_xlim(0, max(counts_f) * 1.18)
+    ax.grid(axis="x", linestyle=":", alpha=0.4)
     for y, c in enumerate(counts_f):
-        ax.text(c + max(counts_f) * 0.02, y, str(c), va="center", fontsize=9)
+        ax.text(c + max(counts_f) * 0.02, y, str(c), va="center", fontsize=9, fontweight="bold", color=edge_col)
     ax.set_xlabel("features extracted")
     ax.set_title(title, fontsize=10)
 plt.tight_layout()

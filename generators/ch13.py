@@ -326,13 +326,21 @@ print(shape[["patient_id"] + spic].head(8).to_string(index=False))
 """),
 ("code", """\
 fig, axes = plt.subplots(1, 3, figsize=(13, 3.6))
-for ax, feature in zip(axes, ["spic_Np", "spic_Na", "spic_s1"]):
-    ax.hist(shape[feature].dropna(), bins=20, color="tab:purple", alpha=0.75)
+spic_specs = [
+    ("spic_Np", "spikes",          "#0072B2", "#004C78"),
+    ("spic_Na", "lobulations",     "#009E73", "#046A4E"),
+    ("spic_s1", "spike sharpness", "#D97706", "#92400E"),
+]
+for ax, (feature, title, fill_col, edge_col) in zip(axes, spic_specs):
+    vals = shape[feature].dropna()
+    ax.hist(vals, bins=20, color=fill_col, edgecolor="white", linewidth=0.7, alpha=0.88)
+    ax.axvline(vals.median(), color=edge_col, linestyle="--", linewidth=1.4,
+               label=f"median {vals.median():.2g}")
     ax.set_xlabel(feature)
     ax.set_ylabel("tumors")
-axes[0].set_title("spikes", fontsize=10)
-axes[1].set_title("lobulations", fontsize=10)
-axes[2].set_title("spike sharpness", fontsize=10)
+    ax.set_title(title, fontsize=10)
+    ax.grid(True, linestyle=":", alpha=0.35)
+    ax.legend(fontsize=8)
 fig.suptitle("Interpretable shape descriptors across the cohort", y=1.04)
 plt.tight_layout()
 plt.show()

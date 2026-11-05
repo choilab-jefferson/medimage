@@ -122,7 +122,9 @@ big_objects = np.isin(labels, keep)
 fig, axes = plt.subplots(1, 3, figsize=(13, 4.4))
 axes[0].imshow(sl, cmap="gray", vmin=-160, vmax=240)
 axes[0].set_title("the slice")
-axes[1].imshow(np.where(labels > 0, labels, np.nan), cmap="tab20")
+obj_cmap = plt.get_cmap("turbo").copy()
+obj_cmap.set_bad("black")
+axes[1].imshow(np.where(labels > 0, (labels * 7) % 20 + 1, np.nan), cmap=obj_cmap, vmin=0, vmax=20)
 axes[1].set_title(f"all {n_objects} objects, colored")
 axes[2].imshow(big_objects, cmap="gray")
 axes[2].set_title(f"the {len(keep)} objects over 50 px")
@@ -207,13 +209,16 @@ depth = ndi.distance_transform_edt(biggest, sampling=(dy, dx))
 print(f"center of mass: row {cy:.1f}, column {cx:.1f}")
 print(f"deepest point is {depth.max():.1f} mm from the edge")
 
-fig, axes = plt.subplots(1, 2, figsize=(10, 4.6))
+fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.6))
 axes[0].imshow(biggest, cmap="gray")
-axes[0].plot(cx, cy, "r+", markersize=16, markeredgewidth=2)
+axes[0].plot(cx, cy, "+", color="black", markersize=20, markeredgewidth=4.5)
+axes[0].plot(cx, cy, "+", color="#FF2A55", markersize=16, markeredgewidth=2.5)
 axes[0].set_title("largest object with its center of mass")
-im = axes[1].imshow(np.where(biggest, depth, np.nan), cmap="viridis")
+dist_cmap = plt.get_cmap("plasma").copy()
+dist_cmap.set_bad("black")
+im = axes[1].imshow(np.where(biggest, depth, np.nan), cmap=dist_cmap)
 axes[1].set_title("distance to the nearest edge (mm)")
-plt.colorbar(im, ax=axes[1], fraction=0.046)
+plt.colorbar(im, ax=axes[1], fraction=0.046, label="mm")
 for ax in axes:
     ax.axis("off")
 plt.tight_layout()
@@ -254,16 +259,30 @@ loader pairs them by file name instead, because each mask file shares its name w
 belongs to.
 """),
 ("code", """\
+from matplotlib.patches import Patch
+
 liver = reference == 63
 mid = in_phase.shape[0] // 2
+
+organ_rgb = np.zeros(reference[mid].shape + (3,))
+organ_palette = [
+    (63,  "liver",        (0.00, 0.85, 1.00)),   # bright cyan
+    (126, "right kidney", (1.00, 0.78, 0.10)),   # bright gold
+    (189, "left kidney",  (0.25, 0.92, 0.50)),   # bright emerald
+    (252, "spleen",       (0.98, 0.30, 0.55)),   # vibrant rose
+]
+for val, _, rgb in organ_palette:
+    organ_rgb[reference[mid] == val] = rgb
 
 fig, axes = plt.subplots(1, 3, figsize=(13, 4.4))
 axes[0].imshow(in_phase[mid], cmap="gray")
 axes[0].set_title("MRI slice")
-axes[1].imshow(np.where(reference[mid] > 0, reference[mid], np.nan), cmap="tab10")
+axes[1].imshow(organ_rgb)
+axes[1].legend(handles=[Patch(facecolor=rgb, label=name) for _, name, rgb in organ_palette],
+               loc="lower right", fontsize=8, facecolor="black", edgecolor="#475569", labelcolor="white")
 axes[1].set_title("the four outlined organs")
 axes[2].imshow(in_phase[mid], cmap="gray")
-axes[2].contour(liver[mid], colors="red", linewidths=1.5)
+axes[2].contour(liver[mid], colors="#00E5FF", linewidths=1.8)
 axes[2].set_title("liver outline on the image")
 for ax in axes:
     ax.axis("off")
@@ -324,16 +343,22 @@ print(f"Dice          {score:.3f}")
 print(f"volume ratio  {volume_error:.1f}x too large")
 """),
 ("code", """\
+from matplotlib.lines import Line2D
+
 fig, axes = plt.subplots(1, 3, figsize=(13, 4.4))
 axes[0].imshow(in_phase[mid], cmap="gray")
-axes[0].contour(liver[mid], colors="lime", linewidths=1.5)
+axes[0].contour(liver[mid], colors="#00E5FF", linewidths=1.8)
 axes[0].set_title("reference")
 axes[1].imshow(in_phase[mid], cmap="gray")
-axes[1].contour(guess[mid], colors="red", linewidths=1.5)
+axes[1].contour(guess[mid], colors="#FF5A36", linewidths=1.8)
 axes[1].set_title("our threshold estimate")
 axes[2].imshow(in_phase[mid], cmap="gray")
-axes[2].contour(liver[mid], colors="lime", linewidths=1.5)
-axes[2].contour(guess[mid], colors="red", linewidths=1.5)
+axes[2].contour(liver[mid], colors="#00E5FF", linewidths=1.8)
+axes[2].contour(guess[mid], colors="#FF5A36", linewidths=1.8, linestyles="--")
+axes[2].legend(handles=[
+    Line2D([0], [0], color="#00E5FF", lw=2, label="reference"),
+    Line2D([0], [0], color="#FF5A36", lw=2, ls="--", label="threshold estimate"),
+], loc="lower right", fontsize=8, facecolor="black", edgecolor="#475569", labelcolor="white")
 axes[2].set_title(f"both — Dice {score:.2f}")
 for ax in axes:
     ax.axis("off")

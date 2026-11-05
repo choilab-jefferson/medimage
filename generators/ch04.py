@@ -114,11 +114,18 @@ labels[4:7, 4:7] = 2        # "kidney"
 nearest = ndi.zoom(labels, 4, order=0)
 linear = ndi.zoom(labels.astype(float), 4, order=1)
 
+def color_labels(a):
+    rgb = np.full(a.shape + (3,), [0.95, 0.20, 0.45])  # invented non-integer values -> magenta
+    rgb[a == 0] = [0.08, 0.12, 0.20]                   # 0: background (dark slate)
+    rgb[a == 1] = [0.00, 0.82, 0.96]                   # 1: liver (bright cyan)
+    rgb[a == 2] = [1.00, 0.78, 0.10]                   # 2: kidney (bright gold)
+    return rgb
+
 fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 for ax, (img, title) in zip(axes, [(labels, "original labels"),
                                    (nearest, "order=0 — still 0/1/2"),
-                                   (linear, "order=1 — invented values")]):
-    ax.imshow(img, cmap="tab10", vmin=0, vmax=3)
+                                   (linear, "order=1 — invented values (magenta)")]):
+    ax.imshow(color_labels(img))
     uniq = sorted({round(float(v), 1) for v in np.unique(img)})[:6]
     ax.set_title(f"{title}\\nvalues: {uniq}", fontsize=9)
     ax.axis("off")
