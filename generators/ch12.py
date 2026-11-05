@@ -32,7 +32,7 @@ By the end you will be able to:
 | **Builds on** | Chapter 9 helps but is not required. No imaging code here — the features already exist |
 | **Downloads** | The same **Lung1 cohort, 60 patients, around 1.5 GB** that Chapters 9 and 13 use |
 | **Longest wait** | The cohort preparation, if no other chapter has already cached it |
-| **Beyond the setup cell** | `pyradiomics` (from git), `qradiomics`, `statsmodels`, `lightgbm`, `xgboost` |
+| **Beyond the setup cell** | `qradiomics` (`v0.9.7+` includes native pure-Python IBSI-1 + legacy `rtools`), `pyradiomics` (from git, for the cached Lung1 `nsclc-survival` pattern), `statsmodels`, `lightgbm`, `xgboost` |
 | **Hardware** | Any laptop. No GPU needed |
 
 Everything after the setup is tables and models, so once the cohort is cached this chapter runs

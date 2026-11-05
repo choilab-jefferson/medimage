@@ -33,7 +33,7 @@ You will be able to:
 | **Builds on** | Chapter 3 (masks and measurement). Nothing from Part II is required |
 | **Downloads** | The **Lung1 cohort, 60 patients at roughly 25 MB each — around 1.5 GB** |
 | **Longest wait** | That first cell. On a cold cache expect a long download plus conversion and extraction; it is by far the slowest cell in the course |
-| **Beyond the setup cell** | `pyradiomics` (from git), `qradiomics`, `rt-utils`, `opencv-python-headless` |
+| **Beyond the setup cell** | `qradiomics` (`v0.9.7+` includes the native pure-Python IBSI-1 & legacy `rtools` extractor), plus `pyradiomics` (from git, for the Lung1 `nsclc-survival` wavelet/LoG pattern and multi-engine comparison), `rt-utils`, `opencv-python-headless` |
 | **Hardware** | Any laptop. No GPU needed |
 
 **Chapters 9, 12 and 13 share this cohort.** `md.fetch_lung1_cohort(60)` prepares it once and
@@ -306,6 +306,32 @@ It publishes reference definitions and a digital phantom with known correct answ
 be checked rather than assumed compatible. When a paper says its features are "IBSI-compliant", that
 is the claim being made.
 
+### Self-contained pure-Python IBSI-1 (`270/270` phantom parity) + legacy `rtools` extraction (`qradiomics v0.9.7+`)
+
+Starting in `qradiomics v0.9.7`, you do not need `pyradiomics`, `pysera`, or any C++/ITK binary to extract IBSI-standardized radiomic features. The legacy C++ `FeatureExtraction` engine from `radiomics-tools` has been completely ported to pure Python in `qradiomics.feature.rtools` (`numpy` + `scipy` + `SimpleITK`):
+
+- **Self-Contained IBSI-1 Profile (`ibsi=True` / `rtools_ibsi=True`)**: Passes **270 / 270 (100%)** of the IBSI-1 Digital Phantom consensus reference features (`18` intensity statistics `stat_*`, `6` voxel morphology `morph_*`, `150` GLCM `cm_*`, and `96` GLRLM `rlm_*` across all six IBSI aggregation modes: `2D_avg`, `2D_comb`, `2_5D_avg`, `2_5D_comb`, `3D_avg`, `3D_comb`).
+- **Simultaneous Legacy C++-Exact Extraction (`ibsi=False`)**: Reproduces all **97** legacy `rtools` features across the six families (`2 i g s c r`) to printed C++ precision. Because the IBSI-1 keys (`stat_*`, `morph_*`, `cm_*`, `rlm_*`) and legacy keys (`Mean`, `Volume`, `2D*`, `MeanOfEnergy`, …) are completely disjoint, both sets (**367 features in total**) can be extracted together in pure Python alongside optional `pyradiomics` / `pysera` comparison runs:
+"""),
+("code", """\
+import pathlib, tempfile
+from qradiomics.feature.rtools import extract_features as rtools_extract
+from qradiomics.feature.rtools.parity import synthetic_case
+
+with tempfile.TemporaryDirectory() as td:
+    ip, mp, label = synthetic_case(0, pathlib.Path(td))
+    f_ibsi = rtools_extract(ip, mp, label=label, ibsi=True, bin_number=64)
+    f_leg = rtools_extract(ip, mp, label=label, feature_select="2isgcr", number_of_bins=64)
+    comb = {**f_ibsi, **f_leg}
+
+print(f"IBSI-1 standardized features (ibsi=True) : {len(f_ibsi):3d}  (stat_*, morph_*, cm_*, rlm_* across 6 IBSI aggregations)")
+print(f"Legacy C++-exact features    (ibsi=False): {len(f_leg):3d}  (2D, intensity, geometry, shape, GLCM, GLRLM)")
+print(f"Combined non-overlapping rtools features : {len(comb):3d}")
+print()
+for k in ("stat_mean", "morph_vol_approx", "cm_joint_avg_3D_comb", "rlm_sre_3D_avg", "Mean", "Volume", "MeanOfEnergy"):
+    print(f"  {k:24s} = {comb[k]:.4g}")
+"""),
+("md", """\
 ## 6. What to actually do
 
 The practical guidance is short:
@@ -333,9 +359,9 @@ sorted into gray-level bins, and the bin width is a free parameter. Change it an
 move substantially while shape features do not move at all — not because texture is bad, but because
 it is measuring relationships between bins that you just redefined.
 
-**Two engines, two answers.** The same image and mask, extracted by two engines, gave different
-feature counts and different values, because "the same feature" is not defined identically by both.
-That is what **IBSI** exists to fix, and what a claim of "IBSI-compliant" is asserting.
+**Multiple engines and self-contained IBSI-1 standardization.** The same image and mask, extracted by different engines, gave different
+feature counts and different values, because "the same feature" is not defined identically by all tools.
+That is what **IBSI** exists to fix, and why `qradiomics` (`v0.9.7+`) includes its own pure-Python IBSI-1 & legacy `rtools` extractor (`qradiomics.feature.rtools`, verified across **270/270 IBSI-1 digital phantom features** while simultaneously extracting **97** legacy `rtools` features, with `pyradiomics` and `pysera` available alongside for cross-engine comparison).
 
 So the five practical rules: fix and *name* a pattern, report the bin width, resample to a fixed
 voxel size first, prefer shape features when you can, and check geometry before extracting.

@@ -121,7 +121,7 @@ activity in several different unit systems, and each needs different handling:
 | `GML` — already SUV | pass straight through |
 
 Get the decay correction wrong and every number is off by a factor that looks entirely plausible.
-`qradiomics` implements the QIBA vendor-neutral standard for this, so we use it rather than
+`qradiomics` (`qradiomics.io.dicom.pet_suv`) implements the **IBSI-SUV v3.1 and QIBA vendor-neutral standard** for this—verified across **58/58 IBSI-SUV Digital Reference Objects** and **16/16 clinical ACRIN 6668 PET series** across all six body-size normalizations (`BW`, `LBM`, `LBMJAMES128`, `LBMJANMA`, `IBW`, `BSA`) and Enhanced PET—so we use it rather than
 reinventing it.
 """),
 ("code", """\

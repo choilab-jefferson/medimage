@@ -37,7 +37,7 @@ By the end of this chapter you will have:
 | **Builds on** | Chapter 9 explains what the 1130 features are; Chapter 12 shares this cohort. Neither is required first |
 | **Downloads** | The **Lung1 cohort, 60 patients at roughly 25 MB each — around 1.5 GB** |
 | **Longest wait** | The full `qr` chain in section 1: download, contour conversion, resampling and extraction. Budget a long coffee on a cold cache |
-| **Beyond the setup cell** | `pyradiomics` (from git), `qradiomics`, `rt-utils`, `opencv-python-headless` |
+| **Beyond the setup cell** | `qradiomics` (`v0.9.7+` includes native pure-Python IBSI-1 + legacy `rtools`), `pyradiomics` (from git, for the Aerts 2014 Lung1 `nsclc-survival` wavelet/LoG pattern), `rt-utils`, `opencv-python-headless` |
 | **Hardware** | Any laptop. No GPU needed |
 
 Everything is cached per patient, so a re-run costs nothing and raising `N_PATIENTS` only fetches

@@ -35,7 +35,7 @@ By the end you will be able to:
 | **Builds on** | Chapter 9 (what a feature is) and Chapter 10 (why registration matters here) |
 | **Downloads** | Two CT timepoints for each of six ACRIN patients — several hundred MB |
 | **Longest wait** | Section 1, by a wide margin: it downloads the cohort *and* segments twelve scans — **around 50 minutes** on a CPU |
-| **Beyond the setup cell** | `pyradiomics` (from git), `qradiomics`, `SimpleITK`, `TotalSegmentator` |
+| **Beyond the setup cell** | `qradiomics` (`v0.9.7+` includes native pure-Python IBSI-1 + legacy `rtools`), `pyradiomics` (from git, optional comparison engine), `SimpleITK`, `TotalSegmentator` |
 | **Hardware** | **Use a GPU runtime.** Twelve segmentation runs is where the time goes |
 
 That makes it the slowest cell in Part III to *run* — six times Chapter 12's whole runtime — as

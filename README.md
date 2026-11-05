@@ -19,9 +19,9 @@ medical imaging.
 | **Part II — Applications** | | |
 | [6. Body composition from CT](Chapter06_Body_Composition_CT.ipynb) | Finding L3, verifying a pretrained model, muscle / SAT / VAT, the muscle index | The destination the first four chapters were building toward |
 | [7. Fat quantification with MR](Chapter07_MR_Fat_Quantification.ipynb) | Dixon in/opposed-phase, fat-fraction maps, liver steatosis | The other modality that can measure fat, and why CT is still the default |
-| [8. PET/CT](Chapter08_PET_CT.ipynb) | SUV, PET/CT fusion, cardiac FDG uptake, change between timepoints | Function as well as anatomy — and a published clinical application |
+| [8. PET/CT](Chapter08_PET_CT.ipynb) | IBSI-SUV v3.1 / QIBA SUV, PET/CT fusion, cardiac FDG uptake, change between timepoints | Function as well as anatomy — and a published clinical application |
 | **Part III — Quantitative methods** | | |
-| [9. Radiomics features](Chapter09_Radiomics_Features.ipynb) | The three feature families, patterns, and what preprocessing does to each | Knowing which of your 1130 numbers survive someone else running the pipeline |
+| [9. Radiomics features](Chapter09_Radiomics_Features.ipynb) | The three feature families, patterns, bin-width sensitivity, and native IBSI-1 (`270/270` phantom parity) + legacy `rtools` extraction | Knowing which features survive someone else running the pipeline — and how IBSI standardization solves engine drift |
 | [10. Registration](Chapter10_Registration.ipynb) | Two engines, scoring in millimeters, diagnosing a registration that fails silently | Aligning scans is where pipelines break without saying so |
 | [11. Delta radiomics](Chapter11_Delta_Radiomics.ipynb) | Measuring change between timepoints, and measuring your own noise floor | Change is more informative than any single value — once you know what change means nothing |
 | [12. Classification](Chapter12_Classification.ipynb) | Benchmarking eight models, a real data leak that produced AUC 1.000, and what a hold-out set can and cannot tell you at this size | An implausibly good result is a bug report, not a finding |
@@ -174,8 +174,14 @@ would be silent, since the areas come out identical either way.
 
 ### qradiomics
 
-[qradiomics](https://github.com/choilab-jefferson/qradiomics) (`qr`) is the research toolkit the
-applied chapters build on. Its canonical flow is:
+[qradiomics](https://github.com/choilab-jefferson/qradiomics) (`qr`, `v0.9.7+`) is the research toolkit the
+applied chapters build on. As of `v0.9.7`, `qradiomics` provides **self-contained, pure-Python IBSI-1 feature extraction (`qradiomics.feature.rtools`) and IBSI-SUV v3.1 PET normalization (`qradiomics.io.dicom.pet_suv`)** out of the box from PyPI without depending on `pyradiomics`, `pysera`, or compiled C++/ITK binaries:
+
+- **Native IBSI-1 + Legacy `rtools` Simultaneous Extraction (`qradiomics.feature.rtools`)**: Passes **270 / 270 (100%)** of the IBSI-1 Digital Phantom consensus reference features (`18` intensity statistics `stat_*`, `6` voxel morphology `morph_*`, `150` GLCM `cm_*`, and `96` GLRLM `rlm_*` across all 6 IBSI aggregation modes: `2D_avg`, `2D_comb`, `2_5D_avg`, `2_5D_comb`, `3D_avg`, `3D_comb`) while simultaneously extracting **97 legacy C++-exact `rtools` features** (`367` combined non-overlapping features in a single pure-Python pass).
+- **IBSI-SUV v3.1 & QIBA PET Standardization (`qradiomics.io.dicom.pet_suv`)**: Passes **58 / 58 (100%)** IBSI-SUV Digital Reference Objects and **16 / 16** clinical ACRIN 6668 PET series (`BW`, `LBM`, `LBMJAMES128`, `LBMJANMA`, `IBW`, `BSA`, and Enhanced PET).
+- **Optional Multi-Engine Cross-Comparison (`--engine rtools,pyradiomics,pysera`)**: `pyradiomics` and `pysera` are supported as optional comparison engines run alongside `rtools`.
+
+Its canonical flow is:
 
 ```
 qr tcia download  →  qr convert  →  qr preprocess  →  qr extract  →  qr results merge  →  qr analyze
@@ -184,11 +190,11 @@ qr tcia download  →  qr convert  →  qr preprocess  →  qr extract  →  qr 
 | Command | What it does |
 |---|---|
 | `qr tcia` | List, download and build manifests from TCIA collections |
-| `qr convert` | DICOM ↔ NRRD, RTSTRUCT → mask; PET routes through QIBA-standard SUV conversion |
+| `qr convert` | DICOM ↔ NRRD, RTSTRUCT → mask; PET routes through IBSI-SUV v3.1 & QIBA-standard SUV conversion (`58/58` DRO parity) |
 | `qr preprocess` | Crop to an ROI and resample image/mask pairs |
-| `qr extract` | Radiomics features from a manifest, with curated patterns and multiple engines |
+| `qr extract` | Radiomics features from a manifest: native pure-Python `rtools` (IBSI-1 `270/270` + legacy `97` = `367` features) plus optional `pyradiomics`/`pysera` comparison engines |
 | `qr delta` | Delta and trend features across timepoints (see Chapter 11) |
-| `qr shape` | Shape descriptors — AHSN, spiculation (see Chapter 13) |
+| `qr shape` | Shape descriptors — AHSN, spiculation, 3D solid-core remodeling (see Chapter 13) |
 | `qr results merge` | Join features with a clinical table into an analysis-ready CSV |
 | `qr analyze` | Univariate Cox survival, classification, feature importance |
 | `qr ml` | Multi-model training, benchmarking, evaluation and prediction (see Chapter 12) |
@@ -230,11 +236,13 @@ four subjects against the 5% clinical threshold, with the spleen as a noise-floo
 
 **Chapter 8 — PET/CT.** PET measures function rather than anatomy, and SUV is its calibrated unit —
 the PET analog of the Hounsfield unit. The chapter converts an ACRIN 6668 PET series to SUV with
-the QIBA-standard converter in qradiomics, resamples it onto the CT grid, and measures uptake in the
+the **IBSI-SUV v3.1 & QIBA-standard** converter in `qradiomics` (`qradiomics.io.dicom.pet_suv`, verified across 58/58 IBSI-SUV Digital Reference Objects and 16/16 ACRIN 6668 series), resamples it onto the CT grid, and measures uptake in the
 heart against the liver as reference. The liver reads SUV 2.27, right on the expected value, which
 is what validates the conversion before anything is interpreted. Framed by Choi et al.,
 *Novel Functional Radiomics for Prediction of Cardiac PET Avidity in Lung Cancer Radiotherapy*,
 JCO Clinical Cancer Informatics 2024 ([PMID 38452302](https://pubmed.ncbi.nlm.nih.gov/38452302/)).
+
+**Chapter 9 — radiomics features & IBSI-1 standardization.** Opens the black box of radiomics feature extraction: shape, first-order statistics, and texture matrices (GLCM, GLRLM, GLSZM, GLDM, NGTDM). Measures how changing a single preprocessing constant (bin width from 25 to 10 HU) shifts two-thirds of texture features by >10% while leaving shape and raw first-order features untouched. Demonstrates how `qradiomics` (`v0.9.7+`) solves cross-engine drift via its self-contained, pure-Python `qradiomics.feature.rtools` engine—which passes **270 / 270 (100%)** of the **IBSI-1 Digital Phantom** reference features across all 6 IBSI aggregation modes while simultaneously extracting **97 legacy C++-exact `rtools` features** (`367` combined features) without requiring `pyradiomics` or `pysera` (which are run alongside as optional comparison engines).
 
 **Chapter 12 — classification, and a result that was too good.** Benchmarks eight models on two
 labels. Histology comes back at chance. Two-year mortality comes back at

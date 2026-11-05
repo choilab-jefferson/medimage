@@ -10,12 +10,15 @@ torch>=2.4
 
 # Segmentation, extraction and survival (Chapters 5-13)
 SimpleITK>=2.4
-qradiomics>=0.9.5
-# The default extraction engine. It is an optional extra of qradiomics rather
-# than a dependency, because PyPI has no pyradiomics wheel for Python 3.10+ and
-# its 3.1.0 sdist has broken metadata. Installing from upstream git works.
-# Pinned to the same commit the notebooks install: master moves, and the
-# feature values move with it.
+# As of v0.9.7, qradiomics ships a self-contained pure-Python IBSI-1 & legacy
+# rtools extractor (qradiomics.feature.rtools: 270/270 IBSI-1 digital phantom
+# parity + 97 legacy C++-exact features = 367 features) and IBSI-SUV v3.1 PET
+# normalization (qradiomics.io.dicom.pet_suv: 58/58 DRO parity) directly on PyPI.
+qradiomics>=0.9.7
+# Optional comparison engine used alongside qradiomics' native rtools engine in
+# Chapters 9, 11, 12, and 13 (e.g., for the legacy Lung1 wavelet/LoG pattern and
+# multi-engine comparison). PyPI has no pyradiomics wheel for Python 3.10+, so it
+# is installed from upstream git pinned to a fixed commit.
 pyradiomics @ git+https://github.com/AIM-Harvard/pyradiomics.git@8ed579383b44806651c463d5e691f3b2b57522ab
 lifelines>=0.30
 remotezip>=0.12
