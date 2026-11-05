@@ -112,14 +112,15 @@ labels[1:4, 1:4] = 1        # "liver"
 labels[4:7, 4:7] = 2        # "kidney"
 
 nearest = ndi.zoom(labels, 4, order=0)
-linear = ndi.zoom(labels, 4, order=1)
+linear = ndi.zoom(labels.astype(float), 4, order=1)
 
 fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 for ax, (img, title) in zip(axes, [(labels, "original labels"),
                                    (nearest, "order=0 — still 0/1/2"),
                                    (linear, "order=1 — invented values")]):
     ax.imshow(img, cmap="tab10", vmin=0, vmax=3)
-    ax.set_title(f"{title}\\nvalues: {sorted(np.unique(img))[:5]}", fontsize=9)
+    uniq = sorted({round(float(v), 1) for v in np.unique(img)})[:6]
+    ax.set_title(f"{title}\\nvalues: {uniq}", fontsize=9)
     ax.axis("off")
 plt.tight_layout()
 plt.show()

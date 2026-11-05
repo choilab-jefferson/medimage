@@ -148,7 +148,7 @@ def coronal_extent(image):
     nz, ny, nx = sitk.GetArrayFromImage(image).shape
     ox, oy, oz = image.GetOrigin()
     sx, sy, sz = image.GetSpacing()
-    return (ox, ox + nx * sx, oz + nz * sz, oz)
+    return (ox, ox + nx * sx, oz, oz + nz * sz)
 
 
 fig, axes = plt.subplots(1, 2, figsize=(8.5, 5.4))
@@ -159,17 +159,18 @@ for ax, timepoint in zip(axes, (0, 1)):
     extent = coronal_extent(image)
     limits += [extent[2], extent[3]]
 
-    ax.imshow(arr[:, arr.shape[1] // 2, :], cmap="gray", vmin=-160, vmax=240, extent=extent)
+    ax.imshow(arr[:, arr.shape[1] // 2, :], cmap="gray", vmin=-160, vmax=240,
+              origin="lower", extent=extent)
     ax.set_facecolor("black")
     ax.set_title(f"timepoint {timepoint}", fontsize=10)
     ax.set_xlabel("x (mm)")
 
     center = (extent[2] + extent[3]) / 2
     ax.axhline(center, color="tab:orange", linestyle="--", linewidth=1.2)
-    ax.text(extent[0] + 10, center - 18, "volume center", color="tab:orange", fontsize=8)
+    ax.text(extent[0] + 10, center + 12, "volume center", color="tab:orange", fontsize=8)
 
 for ax in axes:
-    ax.set_ylim(max(limits), min(limits))
+    ax.set_ylim(min(limits), max(limits))
     ax.set_aspect("equal")
 
 axes[0].set_ylabel("z (mm, world coordinates — shared scale)")
@@ -179,7 +180,7 @@ plt.show()
 
 ("md", """\
 The second scan covers a much shorter length of the patient, and its dashed center line sits well
-below the first. That gap is almost all of the offset the numbers reported: of the 97.9 mm total,
+above the first. That gap is almost all of the offset the numbers reported: of the 97.9 mm total,
 96.8 mm is in z and the rest is a 15 mm shift in y. An optimizer handed these two images without
 being told about it starts by comparing the upper abdomen of one against the pelvis of the other.
 """),
@@ -510,9 +511,10 @@ span = float(np.ptp(values)) or 1.0\nshade = plt.cm.RdYlGn_r((values - values.mi
 
 fig, ax = plt.subplots(figsize=(9, 3.2))
 ax.barh([s[0] for s in summary][::-1], values[::-1], color=shade[::-1], alpha=0.9)
+ax.set_xlim(0, values.max() * 1.14)
 ax.set_xlabel("target registration error (mm, lower is better)")
 for y, v in enumerate(values[::-1]):
-    ax.text(v + values.max() * 0.01, y, f"{v:.2f}", va="center", fontsize=9)
+    ax.text(v + values.max() * 0.015, y, f"{v:.2f}", va="center", fontsize=9)
 plt.tight_layout()
 plt.show()
 """),
