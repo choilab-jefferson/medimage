@@ -174,12 +174,12 @@ would be silent, since the areas come out identical either way.
 
 ### qradiomics
 
-[qradiomics](https://github.com/choilab-jefferson/qradiomics) (`qr`, `v0.9.7+`) is the research toolkit the
-applied chapters build on. As of `v0.9.7`, `qradiomics` provides **self-contained, pure-Python IBSI-1 feature extraction (`qradiomics.feature.rtools`) and IBSI-SUV v3.1 PET normalization (`qradiomics.io.dicom.pet_suv`)** out of the box from PyPI without depending on `pyradiomics`, `pysera`, or compiled C++/ITK binaries:
+[qradiomics](https://github.com/choilab-jefferson/qradiomics) (`qr`, `v0.9.8+`) is the research toolkit the
+applied chapters build on. As of `v0.9.8`, `qradiomics` provides **self-contained, pure-Python IBSI-1 feature extraction (`qradiomics.feature.rtools`) and IBSI-SUV v3.1 PET normalization (`qradiomics.io.dicom.pet_suv`)** out of the box from PyPI without depending on `pyradiomics`, `pysera`, or compiled C++/ITK binaries (`pyradiomics` is completely optional and commented out in `requirements.txt`):
 
 - **Native IBSI-1 + Legacy `rtools` Simultaneous Extraction (`qradiomics.feature.rtools`)**: Passes **270 / 270 (100%)** of the IBSI-1 Digital Phantom consensus reference features (`18` intensity statistics `stat_*`, `6` voxel morphology `morph_*`, `150` GLCM `cm_*`, and `96` GLRLM `rlm_*` across all 6 IBSI aggregation modes: `2D_avg`, `2D_comb`, `2_5D_avg`, `2_5D_comb`, `3D_avg`, `3D_comb`) while simultaneously extracting **97 legacy C++-exact `rtools` features** (`367` combined non-overlapping features in a single pure-Python pass).
 - **IBSI-SUV v3.1 & QIBA PET Standardization (`qradiomics.io.dicom.pet_suv`)**: Passes **58 / 58 (100%)** IBSI-SUV Digital Reference Objects and **16 / 16** clinical ACRIN 6668 PET series (`BW`, `LBM`, `LBMJAMES128`, `LBMJANMA`, `IBW`, `BSA`, and Enhanced PET).
-- **Optional Multi-Engine Cross-Comparison (`--engine rtools,pyradiomics,pysera`)**: `pyradiomics` and `pysera` are supported as optional comparison engines run alongside `rtools`.
+- **Optional Multi-Engine Cross-Comparison (`--engine rtools,pyradiomics,pysera`)**: `pyradiomics` and `pysera` are strictly optional comparison engines (`medimage_data.fetch_lung1_cohort()` automatically falls back to `--engine rtools` when `pyradiomics` is not installed).
 
 Its canonical flow is:
 
@@ -242,7 +242,7 @@ is what validates the conversion before anything is interpreted. Framed by Choi 
 *Novel Functional Radiomics for Prediction of Cardiac PET Avidity in Lung Cancer Radiotherapy*,
 JCO Clinical Cancer Informatics 2024 ([PMID 38452302](https://pubmed.ncbi.nlm.nih.gov/38452302/)).
 
-**Chapter 9 — radiomics features & IBSI-1 standardization.** Opens the black box of radiomics feature extraction: shape, first-order statistics, and texture matrices (GLCM, GLRLM, GLSZM, GLDM, NGTDM). Measures how changing a single preprocessing constant (bin width from 25 to 10 HU) shifts two-thirds of texture features by >10% while leaving shape and raw first-order features untouched. Demonstrates how `qradiomics` (`v0.9.7+`) solves cross-engine drift via its self-contained, pure-Python `qradiomics.feature.rtools` engine—which passes **270 / 270 (100%)** of the **IBSI-1 Digital Phantom** reference features across all 6 IBSI aggregation modes while simultaneously extracting **97 legacy C++-exact `rtools` features** (`367` combined features) without requiring `pyradiomics` or `pysera` (which are run alongside as optional comparison engines).
+**Chapter 9 — radiomics features & IBSI-1 standardization.** Opens the black box of radiomics feature extraction: shape, first-order statistics, and texture matrices (GLCM, GLRLM, GLSZM, GLDM, NGTDM). Measures how changing a single preprocessing constant (bin width from 25 to 10 HU) shifts two-thirds of texture features by >10% while leaving shape and raw first-order features untouched. Demonstrates how `qradiomics` (`v0.9.8+`) solves cross-engine drift via its self-contained, pure-Python `qradiomics.feature.rtools` engine—which passes **270 / 270 (100%)** of the **IBSI-1 Digital Phantom** reference features across all 6 IBSI aggregation modes while simultaneously extracting **97 legacy C++-exact `rtools` features** (`367` combined features) without requiring `pyradiomics` or `pysera` (which remain completely optional comparison engines).
 
 **Chapter 12 — classification, and a result that was too good.** Benchmarks eight models on two
 labels. Histology comes back at chance. Two-year mortality comes back at

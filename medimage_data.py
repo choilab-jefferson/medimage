@@ -238,7 +238,8 @@ LUNG1_CLINICAL = ("https://www.cancerimagingarchive.net/wp-content/uploads/"
                   "NSCLC-Radiomics-Lung1.clinical-version3-Oct-2019.csv")
 
 
-def fetch_lung1_cohort(n_patients: int = 60, work=None, quiet: bool = False):
+def fetch_lung1_cohort(n_patients: int = 60, work=None, quiet: bool = False,
+                       engine: str | None = None):
     """Prepare a Lung1 subset and return the paths every later chapter needs.
 
     Runs the whole `qr` chain once — download, RTSTRUCT conversion, crop and
@@ -249,7 +250,10 @@ def fetch_lung1_cohort(n_patients: int = 60, work=None, quiet: bool = False):
     Requires the ``qr`` CLI plus ``rt-utils`` and ``opencv-python-headless``;
     the ordinary OpenCV build needs a graphics library that servers lack, and
     without the headless one every contour conversion fails on ``libGL.so.1``.
+    When ``engine`` is omitted and optional ``pyradiomics`` is not installed,
+    feature extraction automatically uses pure-Python ``--engine rtools``.
     """
+    import importlib.util
     import subprocess
 
     import pandas as pd
@@ -327,10 +331,16 @@ def fetch_lung1_cohort(n_patients: int = 60, work=None, quiet: bool = False):
                    check=True, capture_output=True)
 
     if not paths["features"].exists():
-        say("Extracting features (nsclc-survival pattern) ...")
-        subprocess.run(["qr", "extract", "-m", str(paths["cropped"] / "manifest.csv"),
-                        "-p", "nsclc-survival", "-o", str(paths["features"]), "-j", "4"],
-                       check=True, capture_output=True)
+        resolved_engine = engine or ("pyradiomics" if importlib.util.find_spec("radiomics") is not None else "rtools")
+        cmd = ["qr", "extract", "-m", str(paths["cropped"] / "manifest.csv"),
+               "-o", str(paths["features"]), "-j", "4"]
+        if engine is not None or resolved_engine == "rtools":
+            cmd.extend(["--engine", resolved_engine])
+            say(f"Extracting features (engine={resolved_engine}) ...")
+        else:
+            cmd.extend(["-p", "nsclc-survival"])
+            say("Extracting features (nsclc-survival pattern) ...")
+        subprocess.run(cmd, check=True, capture_output=True)
 
     if not paths["clinical"].exists():
         _download(LUNG1_CLINICAL, paths["clinical"])
