@@ -34,10 +34,10 @@ By the end of this chapter you will have:
 
 | | |
 |---|---|
-| **Builds on** | Chapter 9 explains what the 1130 features are; Chapter 12 shares this cohort. Neither is required first |
+| **Builds on** | Chapter 9 explains what radiomics features are; Chapter 12 shares this cohort. Neither is required first |
 | **Downloads** | The **Lung1 cohort, 60 patients at roughly 25 MB each — around 1.5 GB** |
 | **Longest wait** | The full `qr` chain in section 1: download, contour conversion, resampling and extraction. Budget a long coffee on a cold cache |
-| **Beyond the setup cell** | `qradiomics` (`v0.9.8+` includes native pure-Python IBSI-1 + legacy `rtools`), `pyradiomics` (completely optional comparison engine from git for reproducing the legacy Aerts 2014 wavelet/LoG subset; `md.fetch_lung1_cohort` auto-falls back to `--engine rtools` when `pyradiomics` is absent), `rt-utils`, `opencv-python-headless` |
+| **Beyond the setup cell** | `qradiomics` (`v0.9.8+` includes native pure-Python `rtools` & IBSI-1; `v0.9.9+` defaults to `rtools` everywhere), `pyradiomics` (optional comparison engine, off by default via `INSTALL_OPTIONAL_PYRADIOMICS = False`; `md.fetch_lung1_cohort` automatically uses pure-Python `--engine rtools` unless `pyradiomics` is installed), `rt-utils`, `opencv-python-headless` |
 | **Hardware** | Any laptop. No GPU needed |
 
 Everything is cached per patient, so a re-run costs nothing and raising `N_PATIENTS` only fetches
@@ -65,14 +65,16 @@ containers do not have. Without the headless build every contour conversion fail
 import subprocess
 import sys
 
-# pyradiomics is the default extraction engine, and an optional extra of
-# qradiomics: PyPI ships no wheel for Python 3.10+, so it comes from git.
-# The commit is pinned because master moves and the feature values move with
-# it — an unpinned install makes this chapter's numbers depend on the day.
-subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                "pyradiomics @ git+https://github.com/AIM-Harvard/"
-                "pyradiomics.git@8ed579383b44806651c463d5e691f3b2b57522ab",
-                "qradiomics", "rt-utils", "opencv-python-headless"], check=True)
+# qradiomics >= 0.9.8 includes its own pure-Python rtools (97 features) and
+# IBSI-1 (270 features) extractor, so pyradiomics is strictly optional.
+# When installed, pyradiomics uses a pinned git commit because PyPI ships no
+# wheel for Python 3.10+ and master changes feature values.
+INSTALL_OPTIONAL_PYRADIOMICS = False  # Set True only for legacy PyRadiomics wavelet/LoG comparison
+pkgs = ["qradiomics>=0.9.8", "rt-utils", "opencv-python-headless"]
+if INSTALL_OPTIONAL_PYRADIOMICS:
+    pkgs.append("pyradiomics @ git+https://github.com/AIM-Harvard/"
+                "pyradiomics.git@8ed579383b44806651c463d5e691f3b2b57522ab")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", *pkgs], check=True)
 
 print(subprocess.run(["qr", "info"], capture_output=True, text=True).stdout.strip())
 """),
@@ -118,11 +120,13 @@ print(f"{ready.OS_event.sum()} deaths observed, median follow-up "
 """),
 
 ("md", """\
-The feature count is worth pausing on. The `nsclc-survival` pattern reproduces the feature space the
-paper used — the original image plus wavelet, Laplacian-of-Gaussian, square, square-root and
-logarithm transforms across seven feature classes — which is about **1130 numbers per patient**.
+The feature count is worth pausing on. Without `pyradiomics`, `md.fetch_lung1_cohort` extracts
+`qradiomics`'s pure-Python `rtools` features (**97 numbers per patient** on the original tumor:
+2D, intensity, geometry, shape, GLCM and GLRLM). Set `INSTALL_OPTIONAL_PYRADIOMICS = True` and it
+uses the `nsclc-survival` pattern — wavelet, Laplacian-of-Gaussian, square, square-root and
+logarithm transforms across seven feature classes — giving about **1130 numbers per patient**.
 
-We are about to fit a survival model with roughly twenty times more features than patients.
+Either way, we are about to fit a survival model with more candidate features than patients.
 """),
 
 ("md", """\
@@ -145,10 +149,10 @@ print(f"expected by chance alone at p < 0.05: about {0.05 * len(cox):.0f}")
 ("md", """\
 Compare those two numbers before reading anything into the ranking.
 
-Testing 1130 features at p < 0.05 produces about 56 "significant" results even if no feature carries
-any signal at all. This is the multiple-comparisons problem, and in radiomics it is not a
-technicality — it is the central difficulty. A single p-value from a list this long is close to
-meaningless on its own.
+Testing 97 features at p < 0.05 produces about 5 "significant" results even if no feature carries
+any signal at all (and ~56 out of 1130 if you enable the optional `pyradiomics` wavelet set). This
+is the multiple-comparisons problem, and in radiomics it is not a technicality — it is the central
+difficulty. A single p-value from a list this long is close to meaningless on its own.
 """),
 ("code", """\
 top = cox.nsmallest(8, "p")[["feature", "hr", "p"]]
@@ -220,18 +224,16 @@ print(comparison.to_string(index=False))
 ("md", """\
 ### Reading the table
 
-**Our run finds nothing.** At sixty patients the cross-validated c-index comes out at roughly 0.48 —
-marginally *below* chance — with a confidence interval that comfortably contains 0.5. Individual
-folds scatter from about 0.42 to 0.56, which is the scatter you would get from shuffling the
-outcomes.
+**Our run finds nothing.** At fifty-nine patients the cross-validated c-index comes out at **0.536 ± 0.084** —
+indistinguishable from chance — with a 95% confidence interval (`[0.438, 0.621]`) that comfortably
+spans 0.5. Individual folds scatter from 0.400 to 0.636, which is small-sample noise.
 
-It is worth being precise about what that means, because the temptation is to read it as a weak
-positive result. It is not. A model that scores below 0.5 has not found a faint signal; it has found
-none, and the small deviation is noise. With over a thousand features and fewer than sixty patients,
-the model has enough freedom to fit the training folds perfectly and no reason for those fits to
-carry over to the held-out patients.
+It is worth being precise about what that means, because the temptation is to read 0.536 (or the
+0.636 in fold 2) as a weak positive result. It is not. A confidence interval spanning `[0.438, 0.621]`
+has not established any signal; with ninety-seven features and fifty-nine patients, the model fits
+noise in the training folds with no reason for those fits to carry over to held-out patients.
 
-**Do not tune your way out of this.** Faced with 0.48 it is easy to try a different feature count, a
+**Do not tune your way out of this.** Faced with 0.536 it is easy to try a different feature count, a
 different penalty, a different fold count, and stop when a run happens to produce 0.6. That number
 would be a description of the search, not of the data. The conclusion from this run is that
 sixty patients cannot answer the question.
@@ -292,9 +294,9 @@ A lung nodule that is smooth and round is usually benign. One with spikes radiat
 **spiculated** — is far more likely to be malignant, because those spikes are the tumor pulling on
 surrounding tissue as it invades. Radiologists have used this sign for decades.
 
-The 1130 texture features above carry no such meaning. `wavelet-HHH_glcm_Imc2` may predict survival,
-but nobody can say what it *is*. Spiculation features are the opposite: six numbers, each counting a
-specific geometric property of the nodule surface.
+The texture and intensity features above carry no such direct anatomical meaning — even when a GLCM
+or GLRLM entry correlates with survival, nobody can point to what structure it saw. Spiculation
+features are the opposite: six numbers, each counting a specific geometric property of the nodule surface.
 
 | Feature | What it counts |
 |---|---|
@@ -362,7 +364,7 @@ downloaded and extracted. Watch what happens as it climbs:
 | Patients | Measured here |
 |---|---|
 | 12 | c-index exactly 0.500, hazard ratios up to $10^{96}$ |
-| 60 | c-index 0.48, CI [0.38, 0.56] — indistinguishable from chance |
+| 60 | c-index 0.536, CI [0.438, 0.621] — indistinguishable from chance |
 | 150+ | not run here; expect the interval to start narrowing |
 | 422 | 0.580 in the reproducibility report |
 
@@ -392,12 +394,12 @@ you inside `md.fetch_lung1_cohort`, rather than a codebase of your own.
 | **Download** | `qr tcia download` |
 | **Convert contours** | `qr convert`, turning RTSTRUCT outlines into masks |
 | **Preprocess** | `qr preprocess`, cropping and resampling to a fixed voxel size |
-| **Extract** | `qr extract`, giving 1130 features per patient |
+| **Extract** | `qr extract` (`rtools` default everywhere in `v0.9.9+`, giving 97 native features per patient; `--engine pyradiomics` opt-in gives ~1130 wavelets) |
 | **Merge outcomes** | `qr results merge`, joining the clinical table onto the feature table |
 | **Analyze** | `qr analyze survival`, giving a c-index and hazard ratios |
 
-**What reproduced and what did not.** At 60 patients the c-index was 0.48, with a confidence
-interval spanning chance. The full-cohort reproduction reaches 0.580, against 0.650 published. The
+**What reproduced and what did not.** At 59 patients the c-index was 0.536, with a confidence
+interval (`[0.438, 0.621]`) spanning chance. The full-cohort reproduction reaches 0.580, against 0.650 published. The
 method did not change between those rows — only the amount of data. At 12 patients the symptoms are
 unmistakable once you know them: a c-index of exactly 0.500 and hazard ratios around $10^{96}$ are
 not weak findings but a model with nothing to fit.
@@ -434,14 +436,14 @@ produce a new one.
    Chapter 3's Dice function. What organ did you actually get?
 
    *Hint:* the structure set holds several ROIs — lungs and cord among them — and without the flag
-   you get whichever comes first, not an error. Extraction then runs happily and returns 1130
-   perfectly valid numbers about the wrong structure.
+   you get whichever comes first, not an error. Extraction then runs happily and returns perfectly
+   valid radiomics numbers about the wrong structure.
 
 4. Of the features ranked most significant, how many would you still expect to be significant after
-   correcting for 1130 tests (try Bonferroni: divide 0.05 by the number of tests)?
+   correcting for all tested features (try Bonferroni: divide 0.05 by `len(cox)`, e.g. 0.05 / 97 ≈ 5.2 × 10⁻⁴)?
 
-   *Hint:* the threshold becomes 0.05 / 1130 ≈ 4.4 × 10⁻⁵. Compare it against the p-values in the
-   table. Bonferroni is conservative and the features are highly correlated, so this is an upper
+   *Hint:* compare that threshold against the p-values in the table (`0.05 / 1130 ≈ 4.4 × 10⁻⁵` if
+   you enabled optional `pyradiomics`). Bonferroni is conservative and the features are highly correlated, so this is an upper
    bound on the correction — but if nothing survives it, that is worth knowing before writing the
    result up.
 

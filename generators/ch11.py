@@ -35,7 +35,7 @@ By the end you will be able to:
 | **Builds on** | Chapter 9 (what a feature is) and Chapter 10 (why registration matters here) |
 | **Downloads** | Two CT timepoints for each of six ACRIN patients — several hundred MB |
 | **Longest wait** | Section 1, by a wide margin: it downloads the cohort *and* segments twelve scans — **around 50 minutes** on a CPU |
-| **Beyond the setup cell** | `qradiomics` (`v0.9.8+` includes native pure-Python IBSI-1 + legacy `rtools`), `pyradiomics` (completely optional comparison engine from git), `SimpleITK`, `TotalSegmentator` |
+| **Beyond the setup cell** | `qradiomics` (`v0.9.8+` includes native pure-Python IBSI-1 + legacy `rtools`; `v0.9.9+` defaults to `rtools` everywhere), `pyradiomics` (optional comparison engine, off by default via `INSTALL_OPTIONAL_PYRADIOMICS = False`), `SimpleITK`, `TotalSegmentator` |
 | **Hardware** | **Use a GPU runtime.** Twelve segmentation runs is where the time goes |
 
 That makes it the slowest cell in Part III to *run* — six times Chapter 12's whole runtime — as
@@ -53,14 +53,16 @@ has a number attached to what it saves.
 import subprocess
 import sys
 
-# pyradiomics is the default extraction engine, and an optional extra of
-# qradiomics: PyPI ships no wheel for Python 3.10+, so it comes from git.
-# The commit is pinned because master moves and the feature values move with
-# it — an unpinned install makes this chapter's numbers depend on the day.
-subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                "pyradiomics @ git+https://github.com/AIM-Harvard/"
-                "pyradiomics.git@8ed579383b44806651c463d5e691f3b2b57522ab",
-                "qradiomics", "SimpleITK"], check=True)
+# qradiomics >= 0.9.8 includes its own pure-Python IBSI-1 (270 features) and
+# legacy rtools (97 features) extractor, so pyradiomics is strictly optional.
+# When installed, pyradiomics uses a pinned git commit because PyPI ships no
+# wheel for Python 3.10+ and master changes feature values.
+INSTALL_OPTIONAL_PYRADIOMICS = False  # Set True only for legacy PyRadiomics comparison
+pkgs = ["qradiomics>=0.9.8", "SimpleITK"]
+if INSTALL_OPTIONAL_PYRADIOMICS:
+    pkgs.append("pyradiomics @ git+https://github.com/AIM-Harvard/"
+                "pyradiomics.git@8ed579383b44806651c463d5e691f3b2b57522ab")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", *pkgs], check=True)
 print("installed")
 """),
 ("code", """\
@@ -197,10 +199,24 @@ manifest.to_csv(WORK / "manifest_full.csv", index=False)
 print(manifest.groupby(["organ", "timepoint"]).size().to_string())
 """),
 ("code", """\
-features_raw = WORK / "features_raw.csv"
+from concurrent.futures import ThreadPoolExecutor
+from qradiomics.feature.rtools.ibsi import extract_ibsi_arrays
+
+features_raw = WORK / "features_raw_ibsi.csv"
 if not features_raw.exists():
-    subprocess.run(["qr", "extract", "-m", str(WORK / "extract_manifest.csv"),
-                    "-o", str(features_raw), "-j", "4"], check=True, capture_output=True)
+    def _extract_ibsi_roi(row_dict):
+        im = sitk.ReadImage(row_dict["image_path"], sitk.sitkFloat64)
+        mask = sitk.GetArrayFromImage(sitk.ReadImage(row_dict["mask_path"])) == 1
+        nz = np.argwhere(mask)
+        sl = tuple(slice(int(lo), int(hi) + 1) for lo, hi in zip(nz.min(axis=0), nz.max(axis=0)))
+        feats = extract_ibsi_arrays(sitk.GetArrayFromImage(im)[sl], mask[sl],
+                                    im.GetSpacing(), bin_width=25.0)
+        return {"patient_id": row_dict["patient_id"], **feats}
+
+    extract_df = pd.read_csv(WORK / "extract_manifest.csv")
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        extracted = list(pool.map(_extract_ibsi_roi, extract_df.to_dict("records")))
+    pd.DataFrame(extracted).to_csv(features_raw, index=False)
 
 features = (pd.read_csv(features_raw)
             .merge(manifest[["row_id", "unit", "timepoint", "organ", "subject"]],
@@ -209,8 +225,8 @@ features = (pd.read_csv(features_raw)
             .rename(columns={"unit": "patient_id"}))
 features["roi_name"] = features.organ
 
-feature_columns = [c for c in features.columns if c.startswith("original_")]
-print(f"{len(features)} rows, {len(feature_columns)} features, "
+feature_columns = [c for c in features.columns if c.startswith(("morph_", "stat_", "cm_", "rlm_"))]
+print(f"{len(features)} rows, {len(feature_columns)} IBSI-1 features, "
       f"{features.patient_id.nunique()} patient-organ units")
 """),
 
@@ -232,8 +248,8 @@ deltas.to_csv(WORK / "delta.csv", index=False)
 
 print(f"delta table: {deltas.shape[0]} units x {deltas.shape[1] - 2} delta features")
 print()
-show = ["patient_id", "delta_original_shape_MeshVolume",
-        "delta_original_firstorder_Mean", "delta_original_glcm_Contrast"]
+show = ["patient_id", "delta_morph_vol_approx",
+        "delta_stat_mean", "delta_cm_contrast_3D_comb"]
 print(deltas[[c for c in show if c in deltas.columns]].round(1).to_string(index=False))
 """),
 
@@ -286,10 +302,10 @@ print(f"  heart (the organ of interest)         : {heart_change.median():6.1%}")
 ("md", """\
 ### Read those two numbers together
 
-The liver — an organ with no reason to have changed — reports a **17% median change**. That is the
+The liver — an organ with no reason to have changed — reports a **17.1% median change**. That is the
 floor. It is what this pipeline produces from nothing.
 
-The heart reports about the same. Whatever genuinely happened to the heart between these two scans
+The heart reports a **13.0% median change** — right below the liver control floor. Whatever genuinely happened to the heart between these two scans
 is smaller than the noise, or indistinguishable from it at this cohort size.
 
 Reporting the heart number alone would have looked like a result. The control is what tells you
@@ -309,9 +325,10 @@ axes[0].set_title("The control moves as much as the target", fontsize=10)
 axes[0].grid(True, linestyle=":", alpha=0.35)
 axes[0].legend(fontsize=8.5)
 
+fam_map = {"morph": "shape", "stat": "firstorder", "cm": "glcm", "rlm": "glrlm"}
 family = {}
 for column in feature_columns:
-    kind = column.split("_")[1]
+    kind = fam_map.get(column.split("_", 1)[0], column.split("_", 1)[0])
     family.setdefault(kind, []).append(liver_change.get(column, np.nan))
 order = sorted(family, key=lambda k: -np.nanmedian(family[k]))
 fam_vals = [np.nanmedian(family[k]) * 100 for k in order][::-1]
@@ -332,7 +349,7 @@ plt.show()
 
 ("md", """\
 The right-hand panel should look familiar. The families that move most on an organ that did not
-change are the same texture families Chapter 9 showed collapsing when the bin width changed. Shape
+change are the same texture families Chapter 9 showed collapsing when the bin width changed (`glrlm` 22.5% and `glcm` 14.9% on the control liver, versus `firstorder` 12.8% and `shape` 6.0%). Shape
 features are the steadiest here too.
 
 The reason is the same in both chapters: texture is computed over discretized voxel neighborhoods,

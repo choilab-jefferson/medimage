@@ -92,10 +92,11 @@ the CPU, twice in Chapter 6, once in Chapter 8, and twelve times in Chapter 11. 
 this sharply, and Colab offers one under *Runtime → Change runtime type*.
 
 Chapters 9, 12 and 13 share one prepared Lung1 cohort. Building it — converting contours,
-resampling, and extracting 1130 features for 60 patients — takes most of that first run and is
-charged to whichever of the three you open first; the other two then start almost immediately.
-Chapter 12 stays slow even afterwards, because benchmarking eight models is work that cannot be
-cached.
+resampling, and extracting radiomics features for 60 patients (`97` pure-Python `rtools` features
+by default, or `~1,130` with optional `pyradiomics` wavelet/LoG filters) — takes most of that
+first run and is charged to whichever of the three you open first; the other two then start
+almost immediately. Chapter 12 stays slow even afterwards, because benchmarking eight models is
+work that cannot be cached.
 
 Downloads are not included in the times, since that depends on your connection and on how busy TCIA
 is. Neither is the setup cell, which on Colab reinstalls packages every fresh session.
@@ -175,7 +176,7 @@ would be silent, since the areas come out identical either way.
 ### qradiomics
 
 [qradiomics](https://github.com/choilab-jefferson/qradiomics) (`qr`, `v0.9.8+`) is the research toolkit the
-applied chapters build on. As of `v0.9.8`, `qradiomics` provides **self-contained, pure-Python IBSI-1 feature extraction (`qradiomics.feature.rtools`) and IBSI-SUV v3.1 PET normalization (`qradiomics.io.dicom.pet_suv`)** out of the box from PyPI without depending on `pyradiomics`, `pysera`, or compiled C++/ITK binaries (`pyradiomics` is completely optional and commented out in `requirements.txt`):
+applied chapters build on. As of `v0.9.8` (with `rtools` set as the default extraction engine everywhere in `v0.9.9+`), `qradiomics` provides **self-contained, pure-Python IBSI-1 feature extraction (`qradiomics.feature.rtools`) and IBSI-SUV v3.1 PET normalization (`qradiomics.io.dicom.pet_suv`)** out of the box from PyPI without depending on `pyradiomics`, `pysera`, or compiled C++/ITK binaries (`pyradiomics` is completely optional and commented out in `requirements.txt`):
 
 - **Native IBSI-1 + Legacy `rtools` Simultaneous Extraction (`qradiomics.feature.rtools`)**: Passes **270 / 270 (100%)** of the IBSI-1 Digital Phantom consensus reference features (`18` intensity statistics `stat_*`, `6` voxel morphology `morph_*`, `150` GLCM `cm_*`, and `96` GLRLM `rlm_*` across all 6 IBSI aggregation modes: `2D_avg`, `2D_comb`, `2_5D_avg`, `2_5D_comb`, `3D_avg`, `3D_comb`) while simultaneously extracting **97 legacy C++-exact `rtools` features** (`367` combined non-overlapping features in a single pure-Python pass).
 - **IBSI-SUV v3.1 & QIBA PET Standardization (`qradiomics.io.dicom.pet_suv`)**: Passes **58 / 58 (100%)** IBSI-SUV Digital Reference Objects and **16 / 16** clinical ACRIN 6668 PET series (`BW`, `LBM`, `LBMJAMES128`, `LBMJANMA`, `IBW`, `BSA`, and Enhanced PET).
@@ -242,24 +243,25 @@ is what validates the conversion before anything is interpreted. Framed by Choi 
 *Novel Functional Radiomics for Prediction of Cardiac PET Avidity in Lung Cancer Radiotherapy*,
 JCO Clinical Cancer Informatics 2024 ([PMID 38452302](https://pubmed.ncbi.nlm.nih.gov/38452302/)).
 
-**Chapter 9 — radiomics features & IBSI-1 standardization.** Opens the black box of radiomics feature extraction: shape, first-order statistics, and texture matrices (GLCM, GLRLM, GLSZM, GLDM, NGTDM). Measures how changing a single preprocessing constant (bin width from 25 to 10 HU) shifts two-thirds of texture features by >10% while leaving shape and raw first-order features untouched. Demonstrates how `qradiomics` (`v0.9.8+`) solves cross-engine drift via its self-contained, pure-Python `qradiomics.feature.rtools` engine—which passes **270 / 270 (100%)** of the **IBSI-1 Digital Phantom** reference features across all 6 IBSI aggregation modes while simultaneously extracting **97 legacy C++-exact `rtools` features** (`367` combined features) without requiring `pyradiomics` or `pysera` (which remain completely optional comparison engines).
+**Chapter 9 — radiomics features & IBSI-1 standardization.** Opens the black box of radiomics feature extraction: shape, first-order statistics, and texture matrices (GLCM, GLRLM, GLSZM, GLDM, NGTDM). Measures how changing a single preprocessing constant (bin width from 25 to 10 HU) shifts two-thirds of texture features by >10% while leaving shape and raw first-order features untouched. Demonstrates how `qradiomics` (`v0.9.8+`, `rtools` default everywhere in `v0.9.9+`) solves cross-engine drift via its self-contained, pure-Python `qradiomics.feature.rtools` engine—which passes **270 / 270 (100%)** of the **IBSI-1 Digital Phantom** reference features across all 6 IBSI aggregation modes while simultaneously extracting **97 legacy C++-exact `rtools` features** (`367` combined features) without requiring `pyradiomics` or `pysera` (which remain completely optional comparison engines).
 
 **Chapter 12 — classification, and a result that was too good.** Benchmarks eight models on two
 labels. Histology comes back at chance. Two-year mortality comes back at
 **AUC 1.000** with zero variance across folds — and the chapter treats that as a bug report rather
 than a finding. The leak is that the label was derived from `OS_months` and `OS_event`, both still
-sitting in the feature table; dropping two columns takes the best model from 1.000 to about 0.65.
+sitting in the feature table; dropping two columns takes the best model from 1.000 to 0.688.
 It closes by asking why not simply hold out a test set instead. Splitting the same 59 patients six
-ways, changing nothing but the seed, gives hold-out AUCs from 0.48 to 0.74 — and they do not track
-the cross-validated score computed on the other side of the same split. The argument is about **n**,
-not against hold-out testing: eighteen test patients, thirteen of them events, cannot measure
-anything.
+ways, changing nothing but the seed, gives hold-out AUCs from 0.40 to 0.68 — and they do not track
+the cross-validated score (`0.37` to `0.64`) computed on the other side of the same split. The
+argument is about **n**, not against hold-out testing: eighteen test patients, thirteen of them
+events, cannot measure anything.
 
 **Chapter 13 — reproducing published results.** Runs the full `qr` pipeline on a subset of the Lung1
-cohort — download, contour conversion, feature extraction, clinical merge, cross-validated Cox — and
-compares the result against the full-cohort reproduction (0.580) and the published figure from Aerts
-et al. (0.650). At 59 patients the measured c-index is **0.482**, indistinguishable from chance, and
-the chapter says so instead of tuning until it agrees. It separates two questions that are easy to
+cohort — download, contour conversion, feature extraction (`97` native pure-Python `rtools` features
+by default), clinical merge, cross-validated Cox — and compares the result against the full-cohort
+reproduction (0.580) and the published figure from Aerts et al. (0.650). At 59 patients the
+measured c-index is **0.536** (`95% CI [0.438, 0.621]`), indistinguishable from chance, and the
+chapter says so instead of tuning until it agrees. It separates two questions that are easy to
 confuse: whether an *effect* reproduces, and whether a *number* does.
 
 It then turns to a second, cleaner kind of reproduction. Where the Aerts signature reproduces 0.07

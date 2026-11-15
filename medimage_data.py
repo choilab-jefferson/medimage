@@ -250,8 +250,10 @@ def fetch_lung1_cohort(n_patients: int = 60, work=None, quiet: bool = False,
     Requires the ``qr`` CLI plus ``rt-utils`` and ``opencv-python-headless``;
     the ordinary OpenCV build needs a graphics library that servers lack, and
     without the headless one every contour conversion fails on ``libGL.so.1``.
-    When ``engine`` is omitted and optional ``pyradiomics`` is not installed,
-    feature extraction automatically uses pure-Python ``--engine rtools``.
+    When ``engine`` is omitted and optional ``pyradiomics`` is absent,
+    feature extraction uses pure-Python ``--engine rtools`` (97 features);
+    when ``pyradiomics`` is present (or ``engine="pyradiomics"``), it passes
+    ``-p nsclc-survival --engine pyradiomics``.
     """
     import importlib.util
     import subprocess
@@ -331,15 +333,17 @@ def fetch_lung1_cohort(n_patients: int = 60, work=None, quiet: bool = False,
                    check=True, capture_output=True)
 
     if not paths["features"].exists():
-        resolved_engine = engine or ("pyradiomics" if importlib.util.find_spec("radiomics") is not None else "rtools")
+        resolved_engine = engine or (
+            "pyradiomics" if importlib.util.find_spec("radiomics") is not None else "rtools"
+        )
         cmd = ["qr", "extract", "-m", str(paths["cropped"] / "manifest.csv"),
                "-o", str(paths["features"]), "-j", "4"]
-        if engine is not None or resolved_engine == "rtools":
+        if resolved_engine == "pyradiomics":
+            cmd.extend(["-p", "nsclc-survival", "--engine", "pyradiomics"])
+            say("Extracting features (nsclc-survival pattern, engine=pyradiomics) ...")
+        else:
             cmd.extend(["--engine", resolved_engine])
             say(f"Extracting features (engine={resolved_engine}) ...")
-        else:
-            cmd.extend(["-p", "nsclc-survival"])
-            say("Extracting features (nsclc-survival pattern) ...")
         subprocess.run(cmd, check=True, capture_output=True)
 
     if not paths["clinical"].exists():

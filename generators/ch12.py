@@ -32,7 +32,7 @@ By the end you will be able to:
 | **Builds on** | Chapter 9 helps but is not required. No imaging code here — the features already exist |
 | **Downloads** | The same **Lung1 cohort, 60 patients, around 1.5 GB** that Chapters 9 and 13 use |
 | **Longest wait** | The cohort preparation, if no other chapter has already cached it |
-| **Beyond the setup cell** | `qradiomics` (`v0.9.8+` includes native pure-Python IBSI-1 + legacy `rtools`), `pyradiomics` (completely optional comparison engine from git), `statsmodels`, `lightgbm`, `xgboost` |
+| **Beyond the setup cell** | `qradiomics` (`v0.9.8+` includes native pure-Python `rtools` & IBSI-1; `v0.9.9+` defaults to `rtools` everywhere), `pyradiomics` (optional comparison engine, off by default via `INSTALL_OPTIONAL_PYRADIOMICS = False`), `statsmodels`, `lightgbm`, `xgboost` |
 | **Hardware** | Any laptop. No GPU needed |
 
 Everything after the setup is tables and models, so once the cohort is cached this chapter runs
@@ -49,14 +49,16 @@ symptom throws away the part that is actually worth learning.
 import subprocess
 import sys
 
-# pyradiomics is the default extraction engine, and an optional extra of
-# qradiomics: PyPI ships no wheel for Python 3.10+, so it comes from git.
-# The commit is pinned because master moves and the feature values move with
-# it — an unpinned install makes this chapter's numbers depend on the day.
-subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                "pyradiomics @ git+https://github.com/AIM-Harvard/"
-                "pyradiomics.git@8ed579383b44806651c463d5e691f3b2b57522ab",
-                "qradiomics", "statsmodels", "lightgbm", "xgboost"], check=True)
+# qradiomics >= 0.9.8 includes its own pure-Python rtools (97 features) and
+# IBSI-1 (270 features) extractor, so pyradiomics is strictly optional.
+# When installed, pyradiomics uses a pinned git commit because PyPI ships no
+# wheel for Python 3.10+ and master changes feature values.
+INSTALL_OPTIONAL_PYRADIOMICS = False  # Set True only for legacy PyRadiomics wavelet/LoG comparison
+pkgs = ["qradiomics>=0.9.8", "statsmodels", "lightgbm", "xgboost"]
+if INSTALL_OPTIONAL_PYRADIOMICS:
+    pkgs.append("pyradiomics @ git+https://github.com/AIM-Harvard/"
+                "pyradiomics.git@8ed579383b44806651c463d5e691f3b2b57522ab")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", *pkgs], check=True)
 print("installed")
 """),
 ("code", """\
@@ -128,9 +130,10 @@ print(univariate.nsmallest(6, "p").to_string(index=False))
 """),
 
 ("md", """\
-The same arithmetic applies here as in Chapter 13. Testing about eleven hundred features at p < 0.05
-yields roughly fifty-five "significant" ones from pure noise. A single small p-value drawn from a
-list that long is not evidence of anything.
+The same arithmetic applies here as in Chapter 13. Testing roughly a hundred `rtools` features at
+p < 0.05 yields about five "significant" ones from pure noise (or around fifty-five out of ~1,130 if
+you enable optional `pyradiomics`). A single small p-value drawn from a list that long is not evidence
+of anything.
 
 Which is why the real question is not "does any feature look associated" but "does a model built
 from them predict patients it has never seen".
@@ -156,8 +159,9 @@ print(squamous_results[["model", "oof_auc", "cv_auc_mean", "cv_auc_std"]].to_str
 """),
 
 ("md", """\
-Every model lands between about 0.39 and 0.52 — chance, with noise. Radiomics does not predict
-squamous histology in fifty-nine patients.
+Every model lands near chance — out-of-fold AUCs spanning 0.42 to 0.62 across folds with wide
+standard deviations (±0.04 to ±0.15). Radiomics does not predict squamous histology reliably in
+fifty-nine patients.
 
 Note what the tool nonetheless reports: a **best** model. With eight candidates scored on the same
 data, one of them wins by luck alone, and its score is biased upward precisely because it was chosen
@@ -180,7 +184,7 @@ print(mortality_results[["model", "oof_auc", "oof_ap", "cv_auc_mean", "cv_auc_st
 ("md", """\
 ### Stop.
 
-Four models at **AUC 1.000** and a fifth within a few thousandths of it, with a standard
+Four models at **AUC 1.000** and two more above **0.96**, with a standard
 deviation of zero across folds. Near-perfect prediction of
 who dies within two years, from CT texture.
 
@@ -253,8 +257,8 @@ plt.show()
 """),
 
 ("md", """\
-Removing two columns takes the best model from a perfect 1.000 to about 0.65. Nothing else changed —
-same features, same models, same cross-validation.
+Removing two columns takes the top models from a perfect 1.000 down to 0.69 (MLP 0.688, RF 0.647),
+with all eight models spanning 0.41 to 0.69. Nothing else changed — same features, same models, same cross-validation.
 
 ### Why this kind of leak is so easy to miss
 
@@ -277,9 +281,9 @@ the outcome was?* If yes, it does not belong in the input.
 
 ## 6. The result after the fix
 
-After the fix, the best model reaches roughly 0.65 out-of-fold on two-year mortality, and the spread
-across models is wide. That is a weak signal in a small cohort — plausible, unremarkable, and worth
-reporting exactly as it is.
+After the fix, the best model reaches 0.688 out-of-fold on two-year mortality, and the spread
+across models runs down to 0.410. That is a weak signal in a small cohort — plausible, unremarkable,
+and worth reporting exactly as it is.
 
 It is also, unavoidably, a much less exciting sentence than the one available ten minutes earlier.
 That asymmetry is the reason leaks survive to publication: the result that is wrong is the one that
@@ -362,8 +366,9 @@ plt.show()
 """),
 
 ("md", """\
-The hold-out AUC swings from roughly chance to roughly 0.74 across the six runs. Same patients, same
-features, same pipeline — only the assignment of patients to the two sides changed.
+The hold-out AUC swings from 0.40 to 0.68 across the six runs, while cross-validation on the
+training patients swings from 0.37 to 0.64. Same patients, same features, same pipeline — only the
+assignment of patients to the two sides changed.
 
 Eighteen patients is the whole problem. With 43 of 59 dead at two years, a hold-out set of that size
 holds about thirteen events and five survivors, and one patient crossing the decision boundary moves
@@ -401,9 +406,10 @@ mechanism, and then to *prove* it by reconstructing the label from the leaked co
 Notice also that this leak is only easy to catch because it was perfect. Exercise 2 builds the
 dangerous version — a leak just noisy enough to produce a merely impressive number.
 
-And on cohort size: a hold-out set of 18 patients gave AUCs from chance to 0.74 depending only on
-the seed. The problem is **n**, not the method. At this size, report the cross-validated number, its
-spread, and the sentence that the cohort is too small to hold anything out.
+And on cohort size: a hold-out set of 18 patients gave AUCs from 0.40 to 0.68 depending only on
+the seed (while training CV swung from 0.37 to 0.64). The problem is **n**, not the method. At this
+size, report the cross-validated number, its spread, and the sentence that the cohort is too small
+to hold anything out.
 
 **Next:** Chapter 13 runs a complete study end to end on this same cohort and compares the result
 against the published paper — the final question, which is whether the pipeline reproduces at all.
@@ -432,7 +438,7 @@ against the published paper — the final question, which is whether the pipelin
    between seeds, "the best model" is largely a statement about the seed, and reporting it as a
    finding is the selection effect section 7 warns about.
 
-4. Raise `--top-features` from 20 to 100 in the hold-out loop. Does the spread across seeds narrow
+4. Raise `--top-features` from 20 to 80 in the hold-out loop. Does the spread across seeds narrow
    or widen? Why would giving the model more features to choose from make a small test set less
    stable rather than more?
 

@@ -10,8 +10,9 @@ cells = [
 
 {badge(FN)}
 
-Chapter 13 extracts 1130 numbers per patient and feeds them to a model without ever saying what any
-of them are. This chapter opens the box first.
+Chapter 13 extracts 97 radiomic features per patient with `qradiomics` (or ~1,130 with optional
+`pyradiomics` wavelet/LoG filters) and feeds them to a model without ever saying what any of them
+are. This chapter opens the box first.
 
 That matters for a practical reason. Chapter 13 ends on the observation that geometric methods
 reproduce better than fitted models. By the end of this chapter you will be able to say something
@@ -33,15 +34,15 @@ You will be able to:
 | **Builds on** | Chapter 3 (masks and measurement). Nothing from Part II is required |
 | **Downloads** | The **Lung1 cohort, 60 patients at roughly 25 MB each — around 1.5 GB** |
 | **Longest wait** | That first cell. On a cold cache expect a long download plus conversion and extraction; it is by far the slowest cell in the course |
-| **Beyond the setup cell** | `qradiomics` (`v0.9.8+` includes the native pure-Python IBSI-1 & legacy `rtools` extractor), plus `pyradiomics` (optional comparison engine from git, used in Section 5 only for cross-engine comparison and the legacy Lung1 wavelet/LoG pattern), `rt-utils`, `opencv-python-headless` |
+| **Beyond the setup cell** | `qradiomics` (`v0.9.8+` includes the native pure-Python IBSI-1 & legacy `rtools` extractor; `v0.9.9+` defaults to `rtools` everywhere), `pyradiomics` (optional comparison engine, off by default via `INSTALL_OPTIONAL_PYRADIOMICS = False`), `rt-utils`, `opencv-python-headless` |
 | **Hardware** | Any laptop. No GPU needed |
 
 **Chapters 9, 12 and 13 share this cohort.** `md.fetch_lung1_cohort(60)` prepares it once and
 caches every artifact, so whichever of the three you run first pays the cost and the other two
 start immediately. On Colab the cache lives in the runtime, so it is lost when the session ends.
 
-Read this chapter before Chapter 13 if you want to know what the 1130 numbers are; read it after if
-you would rather see them used first. Neither order breaks anything.
+Read this chapter before Chapter 13 if you want to know what those radiomic numbers are; read it
+after if you would rather see them used first. Neither order breaks anything.
 """),
 
 ("md", "## Setup"),
@@ -54,14 +55,14 @@ import sys
 # OpenCV build needs a graphics library that servers and containers lack, so
 # without the headless build every contour conversion dies on libGL.so.1 —
 # an error that looks nothing like its cause.
-# pyradiomics is the default extraction engine, and an optional extra of
-# qradiomics: PyPI ships no wheel for Python 3.10+, so it comes from git.
-# The commit is pinned because master moves and the feature values move with
-# it — an unpinned install makes this chapter's numbers depend on the day.
-subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                "pyradiomics @ git+https://github.com/AIM-Harvard/"
-                "pyradiomics.git@8ed579383b44806651c463d5e691f3b2b57522ab",
-                "qradiomics", "rt-utils", "opencv-python-headless"], check=True)
+# qradiomics >= 0.9.8 includes its own pure-Python IBSI-1 (270 features) and
+# legacy rtools (97 features) extractor, so pyradiomics is strictly optional.
+INSTALL_OPTIONAL_PYRADIOMICS = False  # Set True only for legacy PyRadiomics wavelet/LoG comparison
+pkgs = ["qradiomics>=0.9.8", "rt-utils", "opencv-python-headless"]
+if INSTALL_OPTIONAL_PYRADIOMICS:
+    pkgs.append("pyradiomics @ git+https://github.com/AIM-Harvard/"
+                "pyradiomics.git@8ed579383b44806651c463d5e691f3b2b57522ab")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", *pkgs], check=True)
 print("installed")
 """),
 ("code", """\
@@ -126,19 +127,22 @@ print(subprocess.run(["qr", "pattern", "list"], capture_output=True, text=True).
 """),
 
 ("md", """\
-Chapter 13 uses `nsclc-survival`, which applies wavelet, Laplacian-of-Gaussian, square, square-root
-and logarithm transforms on top of the original image, giving about 1130 features. Running with no
-pattern at all gives the plain feature set on the original image only — 107 features.
+Chapter 13 uses `qradiomics`'s pure-Python `rtools` engine (97 unfiltered features per tumor, or
+270 in the standardized IBSI-1 profile). With optional `pyradiomics` enabled (`--engine pyradiomics`),
+the `nsclc-survival` pattern adds wavelet, Laplacian-of-Gaussian, square, square-root and logarithm
+transforms on top of the original image, giving about 1130 features (versus 107 unfiltered
+PyRadiomics features).
 
-The difference is not subtle, and neither number is more correct than the other. What matters is
-that it is **written down**.
+The difference is not subtle, and neither count is more correct than the other. What matters is that
+it is **written down**.
 """),
 
 ("md", """\
 ## 3. The primitives underneath
 
-`qr extract` is a wrapper. Underneath is `qradiomics.atomic`, which you can call directly when you
-want one image rather than a cohort.
+`qr extract` is a wrapper. Underneath are `qradiomics.atomic` for loading and checking image/mask
+pairs and `qradiomics.feature.rtools` for pure-Python feature computation (`qradiomics.atomic.extract_features`
+wraps optional `pyradiomics`).
 
 The step worth knowing about is `check_geometry`. An image and its mask must occupy the same
 physical space — same origin, same spacing, same direction. If they do not, the extractor will
@@ -146,7 +150,7 @@ happily compute features from a mask that is offset from the anatomy it is suppo
 nothing in the output will look wrong.
 """),
 ("code", """\
-from qradiomics.atomic import check_geometry, extract_features, load_image_and_mask
+from qradiomics.atomic import check_geometry, load_image_and_mask
 
 row = pd.read_csv(manifest).iloc[0]
 image, mask = load_image_and_mask(row.image_path, row.mask_path)
@@ -163,18 +167,21 @@ except Exception as exc:
     print("geometry check FAILED:", exc)
 """),
 ("code", """\
-features = extract_features(image, mask)
+from qradiomics.feature.rtools import extract_features as rtools_extract
+
+features = rtools_extract(row.image_path, row.mask_path, ibsi=True, bin_width=25.0)
 numeric = {k: v for k, v in features.items() if isinstance(v, (int, float, np.floating))}
 
+family_of = {"morph": "shape", "stat": "firstorder", "cm": "glcm", "rlm": "glrlm"}
 groups = {}
 for name in numeric:
-    match = re.search(r"_(shape|firstorder|glcm|glrlm|glszm|gldm|ngtdm)_", name)
-    if match:
-        groups.setdefault(match.group(1), []).append(name)
+    fam = family_of.get(name.split("_", 1)[0])
+    if fam:
+        groups.setdefault(fam, []).append(name)
 
-print(f"{len(numeric)} numeric features from one image/mask pair\\n")
+print(f"{len(numeric)} numeric IBSI-1 features from one image/mask pair\\n")
 for family, names in sorted(groups.items(), key=lambda kv: -len(kv[1])):
-    print(f"  {family:12s} {len(names):3d}   e.g. {names[0].split('_', 2)[-1]}")
+    print(f"  {family:12s} {len(names):3d}   e.g. {names[0]}")
 """),
 
 ("md", """\
@@ -194,20 +201,28 @@ That single number changes what "neighboring gray levels" means, and therefore e
 feature. Let us measure by how much.
 """),
 ("code", """\
+from concurrent.futures import ThreadPoolExecutor
+
+manifest_df = pd.read_csv(manifest)
 extra = {}
 for width in (10, 25, 50):
-    out = WORK / f"features_bw{width}.csv"
+    out = WORK / f"features_ibsi_bw{width}.csv"
     if not out.exists():
-        subprocess.run(["qr", "extract", "-m", str(manifest), "-o", str(out),
-                        "--bin-width", str(width), "-j", "4"], check=True,
-                       capture_output=True)
+        def _extract_bw(row_dict):
+            feats = rtools_extract(row_dict["image_path"], row_dict["mask_path"],
+                                   ibsi=True, bin_width=float(width))
+            return {"patient_id": row_dict["patient_id"], **feats}
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            rows_bw = list(pool.map(_extract_bw, manifest_df.to_dict("records")))
+        pd.DataFrame(rows_bw).to_csv(out, index=False)
     extra[width] = pd.read_csv(out).set_index("patient_id")
 
 reference = extra[25]
 shared = [c for c in reference.columns
           if c in extra[10].columns and pd.api.types.is_numeric_dtype(reference[c])]
 
-print(f"{len(shared)} features compared, {len(reference)} patients")
+print(f"{len(shared)} IBSI-1 features compared, {len(reference)} patients")
 print(f"\\n{'bin width':>10}{'median change vs 25':>22}{'moved >10%':>13}")
 for width in (10, 50):
     change = ((extra[width][shared] - reference[shared]).abs()
@@ -216,9 +231,9 @@ for width in (10, 50):
 """),
 
 ("md", """\
-Roughly two thirds of the features move by more than 10% when the bin width changes from 25 to 10.
-Nothing about the patient changed. Nothing about the image changed. One preprocessing constant
-changed.
+Roughly four in five features (82%) move by more than 10% when the bin width changes from 25 to
+10 (54.8% median change). Nothing about the patient changed. Nothing about the image changed. One
+preprocessing constant changed.
 
 Now split that by feature family.
 """),
@@ -228,9 +243,9 @@ change = ((extra[10][shared] - reference[shared]).abs()
 
 by_family = {}
 for name in shared:
-    match = re.search(r"_(shape|firstorder|glcm|glrlm|glszm|gldm|ngtdm)_", name)
-    if match:
-        by_family.setdefault(match.group(1), []).append(change[name])
+    fam = family_of.get(name.split("_", 1)[0])
+    if fam:
+        by_family.setdefault(fam, []).append(change[name])
 
 rows = sorted(by_family.items(), key=lambda kv: -np.nanmedian(kv[1]))
 
@@ -264,8 +279,7 @@ plt.show()
 exactly zero. Shape is computed from the mask, which binning never touches. First-order features are
 computed from the raw values, before discretization.
 
-**Every texture family moves enormously.** NGTDM more than doubles. GLSZM, GLDM and GLRLM shift by
-60–90%.
+**Texture families move enormously.** GLCM shifts by 81.8% (median) and GLRLM shifts by 65.6%.
 
 This is not a bug in the software. It is what the features *are*: texture features are defined on a
 discretized image, so a different discretization is a different feature. The number is meaningless
@@ -278,21 +292,39 @@ reproduce worse because everyone's pipeline discretizes slightly differently.
 """),
 
 ("md", """\
-## 5. Two engines, same image
+## 5. Two definitions, same image
 
-A second source of drift: different software computes nominally the same feature differently.
-`qr extract` can run more than one engine and label the columns by origin, so you can compare.
+A second source of drift: different software — or even different mathematical conventions within the
+same package — computes nominally the same feature differently. Below we extract both the legacy
+C++-exact `rtools` profile (`qr extract --engine rtools`, 97 features) and the standardized IBSI-1
+profile (`ibsi=True`, 270 features) on the same six Lung1 patients in pure Python. (With optional
+comparison packages installed, `qr extract --engine rtools,pyradiomics,pysera` merges all three in
+one command.)
 """),
 ("code", """\
 sample = pd.read_csv(manifest).head(6)
 sample_manifest = WORK / "sample_manifest.csv"
 sample.to_csv(sample_manifest, index=False)
 
-both_csv = WORK / "features_two_engines.csv"
+both_csv = WORK / "features_two_profiles.csv"
 if not both_csv.exists():
-    subprocess.run(["qr", "extract", "-m", str(sample_manifest), "-o", str(both_csv),
-                    "--engine", "pyradiomics,pysera", "-j", "2"], check=True,
-                   capture_output=True)
+    legacy_csv = WORK / "features_rtools_legacy_sample.csv"
+    subprocess.run(["qr", "extract", "-m", str(sample_manifest), "-o", str(legacy_csv),
+                    "--engine", "rtools", "-j", "2"], check=True, capture_output=True)
+    legacy_df = pd.read_csv(legacy_csv)
+    legacy_df = legacy_df.rename(
+        columns={c: f"rtools_{c}" for c in legacy_df.columns if c != "patient_id"}
+    )
+
+    ibsi_rows = [
+        {"patient_id": r["patient_id"],
+         **{f"ibsi_{k}": v for k, v in rtools_extract(
+             r["image_path"], r["mask_path"], ibsi=True, bin_width=25.0
+         ).items()}}
+        for r in sample.to_dict("records")
+    ]
+    merged = pd.DataFrame(ibsi_rows).merge(legacy_df, on="patient_id")
+    merged.to_csv(both_csv, index=False)
 
 both = pd.read_csv(both_csv)
 prefixes = {}
@@ -302,11 +334,17 @@ for column in both.columns:
 print(f"table shape: {both.shape}")
 for prefix, count in sorted(prefixes.items(), key=lambda kv: -kv[1]):
     print(f"  {prefix:14s} {count:4d} columns")
+print()
+row0 = both.iloc[0]
+print(f"first patient mean HU   : rtools={row0['rtools_Mean']:.3f}  ibsi={row0['ibsi_stat_mean']:.3f}")
+print(f"first patient entropy   : rtools={row0['rtools_MeanOfEntropy']:.4f}  ibsi={row0['ibsi_cm_joint_entr_3D_avg']:.4f}")
 """),
 
 ("md", """\
-Two engines, two different counts, and column names prefixed by which produced them. They overlap in
-what they claim to measure but not in how much of it they compute or in the exact definitions used.
+Two definitions, two different counts, and column names prefixed by which produced them. Note the
+first-patient printout at the bottom: unambiguous statistics like mean HU agree exactly (`rtools` vs
+`IBSI-1`), whereas texture entropy disagrees because the two profiles discretize and aggregate
+gray-level pairs differently.
 
 This is the problem the **IBSI** — the Image Biomarker Standardisation Initiative — exists to solve.
 It publishes reference definitions and a digital phantom with known correct answers, so software can
@@ -315,7 +353,7 @@ is the claim being made.
 
 ### Self-contained pure-Python IBSI-1 (`270/270` phantom parity) + legacy `rtools` extraction (`qradiomics v0.9.8+`)
 
-Starting in `qradiomics v0.9.8` (and introduced in `v0.9.7`), you do not need `pyradiomics`, `pysera`, or any C++/ITK binary to extract IBSI-standardized radiomic features (`pyradiomics` is completely optional). The legacy C++ `FeatureExtraction` engine from `radiomics-tools` has been completely ported to pure Python in `qradiomics.feature.rtools` (`numpy` + `scipy` + `SimpleITK`):
+Starting in `qradiomics v0.9.8` (with `rtools` set as the default engine everywhere in `v0.9.9+`), you do not need `pyradiomics`, `pysera`, or any C++/ITK binary to extract IBSI-standardized radiomic features (`pyradiomics` is completely optional). The legacy C++ `FeatureExtraction` engine from `radiomics-tools` has been completely ported to pure Python in `qradiomics.feature.rtools` (`numpy` + `scipy` + `SimpleITK`):
 
 - **Self-Contained IBSI-1 Profile (`ibsi=True` / `rtools_ibsi=True`)**: Passes **270 / 270 (100%)** of the IBSI-1 Digital Phantom consensus reference features (`18` intensity statistics `stat_*`, `6` voxel morphology `morph_*`, `150` GLCM `cm_*`, and `96` GLRLM `rlm_*` across all six IBSI aggregation modes: `2D_avg`, `2D_comb`, `2_5D_avg`, `2_5D_comb`, `3D_avg`, `3D_comb`).
 - **Simultaneous Legacy C++-Exact Extraction (`ibsi=False`)**: Reproduces all **97** legacy `rtools` features across the six families (`2 i g s c r`) to printed C++ precision. Because the IBSI-1 keys (`stat_*`, `morph_*`, `cm_*`, `rlm_*`) and legacy keys (`Mean`, `Volume`, `2D*`, `MeanOfEnergy`, …) are completely disjoint, both sets (**367 features in total**) can be extracted together in pure Python alongside optional `pyradiomics` / `pysera` comparison runs:
@@ -388,7 +426,7 @@ it is measuring relationships between bins that you just redefined.
 
 **Multiple engines and self-contained IBSI-1 standardization.** The same image and mask, extracted by different engines, gave different
 feature counts and different values, because "the same feature" is not defined identically by all tools.
-That is what **IBSI** exists to fix, and why `qradiomics` (`v0.9.8+`) includes its own pure-Python IBSI-1 & legacy `rtools` extractor (`qradiomics.feature.rtools`, verified across **270/270 IBSI-1 digital phantom features** while simultaneously extracting **97** legacy `rtools` features, with `pyradiomics` and `pysera` completely optional alongside for cross-engine comparison).
+That is what **IBSI** exists to fix, and why `qradiomics` (`v0.9.8+`, `rtools` default everywhere in `v0.9.9+`) includes its own pure-Python IBSI-1 & legacy `rtools` extractor (`qradiomics.feature.rtools`, verified across **270/270 IBSI-1 digital phantom features** while simultaneously extracting **97** legacy `rtools` features, with `pyradiomics` and `pysera` completely optional alongside for cross-engine comparison).
 
 So the five practical rules: fix and *name* a pattern, report the bin width, resample to a fixed
 voxel size first, prefer shape features when you can, and check geometry before extracting.
